@@ -1,1 +1,21 @@
-[]
+[
+    {
+        "guid": "7c59bc79-ad24-4106-94b9-d13477e9a518",
+        "name": "jellyfin-cc-sync",
+        "description": "Keeps one Jellyfin user's watched state, favourites and jcc-* tags in line with a jClipCorn database, and writes watches made in Jellyfin back into jClipCorn's viewed history.",
+        "overview": "Syncs watch state, favourites and tags with a jClipCorn database",
+        "owner": "Mikescher",
+        "category": "General",
+        "imageUrl": "https://raw.githubusercontent.com/Mikescher/jellyfin-sync/master/assets/logo.png",
+        "versions": [
+            {
+                "version": "1.0.0.0",
+                "changelog": "First release: jClipCorn \u2192 Jellyfin sync of watched state, favourites and jcc-* tags; Jellyfin watches written back into jClipCorn's viewed history; preview/apply guard, pending queue and full history.",
+                "targetAbi": "12.3.0.0",
+                "sourceUrl": "https://raw.githubusercontent.com/Mikescher/jellyfin-sync/master/releases/jellyfin-cc-sync_1.0.0.0.zip",
+                "checksum": "3099c3dc90f3b59f16230c9d2e4c6c24",
+                "timestamp": "2026-10-26T22:56:34Z"
+            }
+        ]
+    }
+]
