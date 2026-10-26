@@ -146,13 +146,12 @@ Example: `["UNSPECIFIED","UNSPECIFIED","2016-11-27 16:48:30","2023-11-05 11:00:0
 - `add()` skips an entry that compares equal to an existing one (`CCDateTimeList.java:90-96`):
   an identical datetime, or any datetime on a day that already has a date-only entry (and vice
   versa). Multiple `UNSPECIFIED` entries are allowed.
-- **One unparseable entry makes jClipCorn read the whole list as empty**
-  (`CCDateTimeList.fromJSONArray`, committed state `826b2511`), and its next save writes `[]`.
-  An uncommitted change in the jClipCorn working copy (2026-10-26) makes `fromJSONArray` of every
-  JSON list column (history, tags, groups including invalid group names, online refs, …) throw
-  instead; either way a bad list is fatal to the history. The plugin's writer must produce only
-  `yyyy-MM-dd HH:mm:ss` entries, keep existing entries verbatim, and refuse to touch a row whose
-  existing list it cannot parse completely.
+- **One unparseable entry makes the whole list unreadable for jClipCorn.** Since `16777b66`
+  ("Properly fail to load on invalid database values") `fromJSONArray` of every JSON list
+  column (history, tags, groups, online refs, …) throws `JSONListFormatException` and jClipCorn
+  refuses to load the database; before that it read the list as empty and wrote `[]` on its
+  next save. The plugin's writer must produce only `yyyy-MM-dd HH:mm:ss` entries, keep existing
+  entries verbatim, and refuse to touch a row whose existing list it cannot parse completely.
 - jClipCorn's entry parser (`CCDateTime.createFromSQL`) checks only the length and the
   separators, not digits or ranges (`2016-13-45` passes). The plugin's parser
   (`CcDateTime.TryParse`) is stricter: digits, real calendar dates, `00:00:00`–`23:59:59`, and
@@ -197,8 +196,9 @@ On MOVIES, SERIES, SEASONS, EPISODES (`columnTypes/CCUserScore.java:13-20`). The
 
 - Only on movies and series: main `MOVIES.GROUPS` / `SERIES.GROUPS`, a JSON array of names,
   e.g. `["MCU"]` (`columnTypes/CCGroupList.java:136-140`).
-- Allowed names: `^[A-Za-z0-9\-_ ]+$`, case-sensitive (`columnTypes/CCGroup.java:9-10`). The
-  reader silently drops names that do not validate; the plugin does the same.
+- Allowed names: `^[A-Za-z0-9\-_ ]+$`, case-sensitive (`columnTypes/CCGroup.java:9-10`). Since
+  `16777b66` jClipCorn fails to load a database with an invalid name (`GroupFormatException`);
+  older versions dropped such names silently. The plugin drops them and tags the valid ones.
 - `GROUPS` table: `NAME`, `ORDERING`, `COLOR`, `SERIALIZE`, `PARENTGROUP` (`''` = root, max
   depth 6), `VISIBLE` (cover drawing only).
 
@@ -215,8 +215,8 @@ On MOVIES, SERIES, SEASONS, EPISODES (`columnTypes/CCUserScore.java:13-20`). The
 - The NFO writer (`features/nfo/NFOUniqueIdWriter.java`) writes only the **first** reference per
   provider type, in list order and regardless of `d`; Jellyfin keeps the last `<uniqueid>` per
   type, so writing one per type is what makes the NFO's `tmdb`/`imdb` deterministic.
-- jClipCorn reads a list with an unknown type (`CCOnlineRefType.parse`) as empty; the plugin
-  keeps unknown types and only looks at `tmdb`/`imdb`.
+- jClipCorn fails on a list with an unknown type (`CCOnlineRefType.parse`, since `16777b66`;
+  read as empty before); the plugin keeps unknown types and only looks at `tmdb`/`imdb`.
 
 ## Change-history triggers
 

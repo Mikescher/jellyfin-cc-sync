@@ -53,7 +53,7 @@ Fallbacks, only for items without a `clipcorn` id:
 For each matched movie/episode:
 
 1. `H` = parsed `VIEWED_HISTORY`. An unparseable list skips the item for this run and leaves
-   its JF state untouched (jClipCorn itself would read it as empty).
+   its JF state untouched (jClipCorn itself refuses to load such a database since `16777b66`).
 2. Overlay: every pending update for this element with status `pending` is added to `H` with
    jClipCorn's `add()` semantics (an entry equal to an existing one is skipped, exactly as the
    writer will skip it later).

@@ -5,8 +5,8 @@ namespace Jellyfin.Plugin.CcSync.ClipCorn.Model;
 
 /// <summary>
 /// A <c>GROUPS</c> column of a movie or series: a JSON array of group names
-/// (<c>columnTypes/CCGroupList.java</c>). Like jClipCorn, names that fail
-/// <c>^[A-Za-z0-9\-_ ]+$</c> are dropped silently.
+/// (<c>columnTypes/CCGroupList.java</c>). Names that fail <c>^[A-Za-z0-9\-_ ]+$</c> are dropped;
+/// current jClipCorn refuses to load such a database at all.
 /// </summary>
 public static partial class CcGroupList
 {

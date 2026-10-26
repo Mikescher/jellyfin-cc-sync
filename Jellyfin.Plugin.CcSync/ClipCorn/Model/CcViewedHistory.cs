@@ -24,8 +24,8 @@ public sealed class CcViewedHistory
     public bool IsViewed => Entries.Count > 0;
 
     /// <summary>
-    /// Parses a stored list. jClipCorn reads a list with a single bad entry as empty and writes
-    /// <c>[]</c> on its next save, so a list that fails here must never be rewritten.
+    /// Parses a stored list. A single bad entry makes the whole list unreadable for jClipCorn, so a
+    /// list that fails here must never be rewritten.
     /// </summary>
     public static bool TryParse(string? json, out CcViewedHistory history, out string? error)
     {
