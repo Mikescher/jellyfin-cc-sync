@@ -63,17 +63,16 @@ public class CcLockProbeTests
     [InlineData("garbage", CcLockFormat.Malformed)]
     [InlineData("{\"pid\": 1234, \"u\": \"yesterday\"}", CcLockFormat.Json)]
     [InlineData("", CcLockFormat.Malformed)]
-    public void WithoutAHeartbeatALockIsHeldWhateverItsAge(string content, CcLockFormat format)
+    public void WithoutAHeartbeatTheMtimeDecides(string content, CcLockFormat format)
     {
         var fresh = Eval(content, Now.AddMinutes(-10));
         Assert.Equal(format, fresh.Format);
         Assert.True(fresh.Held);
 
-        // Pre-heartbeat jClipCorn writes its PID once at start: an old file may be a running jClipCorn.
-        var old = Eval(content, Now.AddDays(-3));
-        Assert.True(old.Held);
-        Assert.False(old.Stale);
-        Assert.Contains("without heartbeat", old.Description, StringComparison.Ordinal);
+        var old = Eval(content, Now.AddMinutes(-181));
+        Assert.False(old.Held);
+        Assert.True(old.Stale);
+        Assert.Contains("file modified", old.Description, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -102,7 +101,7 @@ public class CcLockProbeTests
         Assert.True(bare.Held);
 
         File.SetLastWriteTimeUtc(fixture.Files.MainLock, DateTime.UtcNow.AddHours(-4));
-        Assert.True(CcLockProbe.Probe(fixture.Files.MainLock, stale, DateTime.UtcNow).Held);
+        Assert.False(CcLockProbe.Probe(fixture.Files.MainLock, stale, DateTime.UtcNow).Held);
 
         File.WriteAllText(fixture.Files.MainLock, "{\"u\": \"2020-01-01T00:00:00Z\"}");
         Assert.False(CcLockProbe.Probe(fixture.Files.MainLock, stale, DateTime.UtcNow).Held);

@@ -24,7 +24,7 @@
 
                     <div class="inputContainer">
                         <input is="emby-input" type="number" id="LockStaleMinutes" label="Lock counts as stale after (minutes)" min="180" step="1" />
-                        <div class="fieldDescription">Applies to locks with a heartbeat only. A running jClipCorn refreshes its lock every 60 minutes; jClipCorn itself treats a lock older than 180 minutes as left behind by a crash, and values below 180 are raised to it. A lock without heartbeat (older jClipCorn) always counts as held.</div>
+                        <div class="fieldDescription">A running jClipCorn refreshes its lock every 60 minutes; jClipCorn itself treats a lock older than 180 minutes as left behind by a crash, and values below 180 are raised to it.</div>
                     </div>
 
                     <div class="inputContainer">

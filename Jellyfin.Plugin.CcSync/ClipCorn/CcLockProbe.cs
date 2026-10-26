@@ -96,9 +96,7 @@ public static class CcLockProbe
 
     /// <summary>
     /// The rule: a JSON lock with a readable heartbeat <c>u</c> is held while the heartbeat is younger
-    /// than <paramref name="staleAfter"/>. Any other lock is held whatever its age: jClipCorn builds
-    /// with schema 38 but before the heartbeat (2026-09-07 … 10-03) write a bare PID once and never
-    /// touch the file again, so its age says nothing about whether that jClipCorn still runs.
+    /// than <paramref name="staleAfter"/>; anything else present is held while the file's mtime is.
     /// </summary>
     public static CcLockStatus Evaluate(string path, string? content, DateTime? modifiedUtc, TimeSpan staleAfter, DateTime nowUtc)
     {
@@ -141,7 +139,8 @@ public static class CcLockProbe
             pid = barePid;
         }
 
-        var held = heartbeat is null || nowUtc - heartbeat.Value < staleAfter;
+        var reference = heartbeat ?? modifiedUtc;
+        var held = reference is null || nowUtc - reference.Value < staleAfter;
 
         var holder = string.IsNullOrEmpty(host) ? "jClipCorn" : $"jClipCorn on {host}";
         if (pid is not null)
@@ -149,20 +148,11 @@ public static class CcLockProbe
             holder += $" (pid {pid})";
         }
 
-        string description;
-        if (heartbeat is null)
-        {
-            var age = modifiedUtc is null ? "age unknown" : "file modified " + FormatAge(nowUtc - modifiedUtc.Value);
-            description = $"{name} held by {holder} without heartbeat ({age}); it counts as held until jClipCorn removes it."
-                + " If no jClipCorn runs, start and close jClipCorn once, or delete the file";
-        }
-        else
-        {
-            var age = "heartbeat " + FormatAge(nowUtc - heartbeat.Value);
-            description = held
-                ? $"{name} held by {holder}, {age}"
-                : $"{name} is stale: {holder} was not shut down cleanly ({age})";
-        }
+        var basis = heartbeat is not null ? "heartbeat" : "file modified";
+        var age = reference is null ? "age unknown" : $"{basis} {FormatAge(nowUtc - reference.Value)}";
+        var description = held
+            ? $"{name} held by {holder}, {age}"
+            : $"{name} is stale: {holder} was not shut down cleanly ({age})";
 
         return new CcLockStatus(path, format, held, host, pid, acquired, heartbeat, modifiedUtc, description);
     }
