@@ -51,6 +51,22 @@ public sealed class FixtureDirectory : IDisposable
         return command.ExecuteScalar();
     }
 
+    /// <summary>Every row of a query as <c>|</c>-joined values, for byte-level before/after comparisons.</summary>
+    public IReadOnlyList<string> Rows(string file, string sql)
+    {
+        using var connection = Open(file, SqliteOpenMode.ReadOnly);
+        using var command = connection.CreateCommand();
+        command.CommandText = sql;
+        using var reader = command.ExecuteReader();
+        var rows = new List<string>();
+        while (reader.Read())
+        {
+            rows.Add(string.Join("|", Enumerable.Range(0, reader.FieldCount).Select(i => reader.IsDBNull(i) ? "<null>" : Convert.ToString(reader.GetValue(i), System.Globalization.CultureInfo.InvariantCulture))));
+        }
+
+        return rows;
+    }
+
     public void Dispose()
     {
         try

@@ -11,6 +11,13 @@
 - The jClipCorn folder (`ClipCornDB/`) is visible inside the Jellyfin process as a directory, and
   writable for the Jellyfin user (see below).
 
+## jClipCorn time zone
+
+The plugin setting "jClipCorn time zone" must be the zone the jClipCorn machine (its JVM) runs
+in. jClipCorn stores local wall-clock times; with a different zone every entry the plugin writes
+is shifted, and a fresh one can lie in jClipCorn's future, which its database validator reports
+as "Invalid history".
+
 ## Jellyfin settings
 
 - Dashboard → NFO Settings → "Save user watch data to NFO files for": **leave empty**, or at

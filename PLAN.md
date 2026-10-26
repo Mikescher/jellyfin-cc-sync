@@ -331,7 +331,9 @@ Fixture databases:
   the exact `VIEWED_HISTORY`/`TAGS` text, sparse-row handling, and that the trigger wrote
   `userdata.HISTORY` rows.
 - Final check: open a written fixture copy in jClipCorn (`--validate-db` or GUI) and confirm it
-  loads with the new entries.
+  loads with the new entries. Done in phase 6 with a throwaway JUnit test
+  (`Fixtures/generator/JellyfinCcSyncReopen.java.txt`): loads, entries present, validator output
+  unchanged.
 
 Manual end-to-end (Jellyfin 12.3 in Docker, a copy of the real `ClipCornDB` folder, a small
 library with jClipCorn NFOs): first run hits the guard → preview → apply; watch an episode →
@@ -381,7 +383,10 @@ Each phase ends with `make build` + `make test` green and a commit.
   **Runtime verified (phase 3):** in the 12.3 container the probe opens snapshot copies
   (`file:…?immutable=1`, `Pooling=False`) through the server's SQLite; nothing else is loaded.
 - SQLite writes over the actual mount (cifs without `nobrl`, or NFSv4): run the writer once
-  against the real share with jClipCorn closed and re-open in jClipCorn.
+  against the real share with jClipCorn closed and re-open in jClipCorn. **Partly verified
+  (phase 6):** written through a local bind mount in the 12.3 container and re-opened with
+  jClipCorn (see `docs/clipcorn-db.md` § Write recipe). The run against the real share is still
+  open and needs the user.
 - Jellyfin's NFO parser only imports `<playcount>`/`<lastplayed>` when an NFO user is configured
   (deployment.md recommends none); confirm in `BaseNfoParser`.
 - `SaveUserData` with `Import` on an item the user is currently playing: confirm the session's

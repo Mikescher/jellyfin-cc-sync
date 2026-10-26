@@ -154,13 +154,19 @@ The CC entry is rendered at write time as `WatchedAtUtc` in `ClipCornTimeZone`,
 Attempted 15 s after a watch (debounce) and by the 5-minute task while pending updates exist:
 
 1. jClipCorn lock held (`ClipCornDB.db.~lock` or `ClipCornHistory.db.~lock`, rule in
-   `clipcorn-db.md`) or a `-journal` file next to either DB → wait; Status shows who holds it.
+   `clipcorn-db.md`) or a `-journal`/`-wal` file next to any of the three DBs → wait; Status
+   shows who holds it. Waiting counts no attempt; `cc-locked` is recorded once per holder (and a
+   configuration problem once per problem), not on every 5-minute retry.
 2. Snapshot-read the main DB for versions, DUUID, element existence, episode → series ids and
    fallback resolution.
 3. Back up `ClipCornUserData.db` into the plugin's backup folder (rotating, `BackupCount`).
 4. Probe the locks again, then open `ClipCornUserData.db` read-write and apply all pending
-   updates in one transaction (recipe in `clipcorn-db.md`).
+   updates in one transaction (recipe in `clipcorn-db.md`); probe once more right before
+   `COMMIT` and roll back if a lock appeared.
 5. Probe the locks again; a lock that appeared during the write is logged as a warning.
+
+Movies without a `clipcorn` id are resolved at write time with the movie fallback chain on the
+jClipCorn side (unique match required); the resolved id is stored on the pending update.
 
 Outcomes per update:
 

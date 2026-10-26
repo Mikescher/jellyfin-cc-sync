@@ -60,8 +60,17 @@ public sealed record CcAccessState(CcLockStatus MainLock, CcLockStatus HistoryLo
 /// </summary>
 public static class CcLockProbe
 {
-    public static CcAccessState ProbeDirectory(CcFiles files, TimeSpan staleAfter, DateTime nowUtc)
-        => new(Probe(files.MainLock, staleAfter, nowUtc), Probe(files.HistoryLock, staleAfter, nowUtc), files.ExistingJournals());
+    /// <param name="files">The directory.</param>
+    /// <param name="staleAfter">Age after which a lock no longer counts.</param>
+    /// <param name="nowUtc">The current time.</param>
+    /// <param name="ownTransactionOn">A database the caller is writing right now; its journal is the caller's own.</param>
+    public static CcAccessState ProbeDirectory(CcFiles files, TimeSpan staleAfter, DateTime nowUtc, string? ownTransactionOn = null)
+        => new(
+            Probe(files.MainLock, staleAfter, nowUtc),
+            Probe(files.HistoryLock, staleAfter, nowUtc),
+            files.ExistingJournals()
+                .Where(j => ownTransactionOn is null || !j.StartsWith(ownTransactionOn + "-", StringComparison.Ordinal))
+                .ToList());
 
     public static CcLockStatus Probe(string path, TimeSpan staleAfter, DateTime nowUtc)
     {

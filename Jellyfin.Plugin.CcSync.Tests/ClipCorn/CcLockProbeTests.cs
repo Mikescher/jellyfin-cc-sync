@@ -140,4 +140,15 @@ public class CcLockProbeTests
         Assert.True(journal.Blocked);
         Assert.Contains("ClipCornUserData.db-journal", journal.Describe(), StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void TheCallersOwnJournalDoesNotBlock()
+    {
+        using var fixture = new FixtureDirectory();
+        File.WriteAllText(fixture.Files.UserDb + "-journal", string.Empty);
+        Assert.False(CcLockProbe.ProbeDirectory(fixture.Files, Stale, DateTime.UtcNow, ownTransactionOn: fixture.Files.UserDb).Blocked);
+
+        File.WriteAllText(fixture.Files.MainDb + "-journal", string.Empty);
+        Assert.True(CcLockProbe.ProbeDirectory(fixture.Files, Stale, DateTime.UtcNow, ownTransactionOn: fixture.Files.UserDb).Blocked);
+    }
 }

@@ -1,0 +1,45 @@
+package de.jClipCorn.test;
+
+import de.jClipCorn.database.CCMovieList;
+import de.jClipCorn.database.databaseElement.columnTypes.CCSingleTag;
+import de.jClipCorn.properties.enumerations.CCDatabaseDriver;
+import de.jClipCorn.util.filesystem.FSPath;
+import org.junit.Test;
+
+import static org.junit.Assert.*;
+
+/** Throwaway: opens a ClipCornDB folder written by jellyfin-cc-sync. Not to be committed. */
+@SuppressWarnings("nls")
+public class TmpJellyfinCcSyncReopen extends ClipCornBaseTest {
+	@Test
+	public void reopen() throws Exception {
+		var ml = CCMovieList.connectAndLoadDirect(CCDatabaseDriver.SQLITE, FSPath.create("/home/mike/Code/private/ClipCorn/jellyfin-cc-sync/artifacts/reopen"), "ClipCornDB", false, false);
+
+		var super8 = movieByTitle(ml, "Super 8");
+		System.out.println("Super 8: " + super8.ViewedHistory.get().asJSONArray() + " tags " + super8.Tags.get().asJSONArray());
+		assertEquals("[\"2023-11-05 11:00:00\",\"2026-10-26 23:13:06\"]", super8.ViewedHistory.get().asJSONArray());
+
+		var series = seriesByTitle(ml, "Steins;Gate");
+		var ep1 = series.getSeasonByArrayIndex(0).getEpisodeByArrayIndex(0);
+		System.out.println("Ep1: " + ep1.ViewedHistory.get().asJSONArray() + " tags " + ep1.Tags.get().asJSONArray() + ", series tags " + series.Tags.get().asJSONArray());
+		assertEquals("[\"2026-10-26 23:13:22\"]", ep1.ViewedHistory.get().asJSONArray());
+		assertFalse(ep1.Tags.get(CCSingleTag.TAG_WATCH_LATER));
+		assertFalse(series.Tags.get(CCSingleTag.TAG_WATCH_LATER));
+		assertTrue(ep1.isViewed());
+
+		System.out.println("after:  " + validate(ml));
+		ml.shutdown();
+
+		var before = CCMovieList.connectAndLoadDirect(CCDatabaseDriver.SQLITE, FSPath.create("/home/mike/Code/private/ClipCorn/jellyfin-cc-sync/artifacts/reopen-before"), "ClipCornDB", false, false);
+		System.out.println("before: " + validate(before));
+		before.shutdown();
+	}
+
+	private static String validate(CCMovieList ml) {
+		var errs = new java.util.ArrayList<de.jClipCorn.features.databaseErrors.DatabaseError>();
+		new de.jClipCorn.features.databaseErrors.CCDatabaseValidator(ml).validate(errs, de.jClipCorn.features.databaseErrors.DatabaseValidatorOptions.presetDefault(), de.jClipCorn.util.listener.DoubleProgressCallbackListener.EMPTY);
+		var counts = new java.util.TreeMap<String, Integer>();
+		for (var e : errs) counts.merge(String.valueOf(e.getType()), 1, Integer::sum);
+		return errs.size() + " " + counts;
+	}
+}

@@ -1,6 +1,7 @@
 using Jellyfin.Plugin.CcSync.Configuration;
 using Jellyfin.Plugin.CcSync.Jellyfin;
 using Jellyfin.Plugin.CcSync.State;
+using Jellyfin.Plugin.CcSync.Sync;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.Movies;
 using MediaBrowser.Controller.Entities.TV;
@@ -33,6 +34,7 @@ public sealed class WatchEntryPoint : IHostedService, IDisposable
     private readonly PendingStore _pending;
     private readonly HistoryStore _history;
     private readonly RunStore _runs;
+    private readonly FlushEngine _flush;
     private readonly ILogger<WatchEntryPoint> _logger;
     private readonly CancellationTokenSource _cts = new();
 
@@ -46,6 +48,7 @@ public sealed class WatchEntryPoint : IHostedService, IDisposable
         PendingStore pending,
         HistoryStore history,
         RunStore runs,
+        FlushEngine flush,
         ILogger<WatchEntryPoint> logger)
     {
         _sessionManager = sessionManager;
@@ -55,6 +58,7 @@ public sealed class WatchEntryPoint : IHostedService, IDisposable
         _pending = pending;
         _history = history;
         _runs = runs;
+        _flush = flush;
         _logger = logger;
     }
 
@@ -302,5 +306,6 @@ public sealed class WatchEntryPoint : IHostedService, IDisposable
         });
 
         _logger.LogInformation("Watch of {Item} queued for jClipCorn as pending update #{Id} ({Source})", name, pending.Id, source);
+        _flush.RequestSoon();
     }
 }

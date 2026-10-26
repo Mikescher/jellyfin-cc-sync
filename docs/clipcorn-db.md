@@ -238,9 +238,11 @@ transaction, after `PRAGMA recursive_triggers = true`:
 1. `SELECT VIEWED_HISTORY, TAGS FROM MOVIES|EPISODES WHERE ID = ?`.
 2. Parse with jClipCorn semantics. Unparseable → fail this update, leave the row untouched.
 3. Add the entry (`yyyy-MM-dd HH:mm:ss`, local time) with jClipCorn's `add()` semantics. Skipped
-   as equal → the update is a no-op ("duplicate").
+   as equal → the history stays as it is ("duplicate").
 4. If `ResetWatchLaterOnWatch`: remove `3` from TAGS of the element; for an episode also from
-   its series' user row (`SERIES`, id via main `EPISODES.SEASONID → SEASONS.SERIESID`).
+   its series' user row (`SERIES`, id via main `EPISODES.SEASONID → SEASONS.SERIESID`). This also
+   happens for a duplicate, as `addToViewedHistoryFromUI` removes the tag without looking at the
+   result of `add()`. A TAGS value that does not parse is left unchanged.
 5. Upsert, never `INSERT OR REPLACE` (that would log delete + add):
    ```sql
    INSERT INTO MOVIES (ID, VIEWED_HISTORY, TAGS, SCORE, SCORECOMMENT) VALUES (?, ?, '[]', 6, '')
@@ -252,6 +254,18 @@ transaction, after `PRAGMA recursive_triggers = true`:
 
 Serialisation: compact JSON (`["a","b"]`), sorted with jClipCorn's comparator, existing entries
 byte-for-byte unchanged.
+
+While the transaction runs, `ClipCornUserData.db-journal` is the writer's own; the lock probe
+right before `COMMIT` therefore ignores that one journal (locks and the other journals still
+abort the session).
+
+Verified (phase 6): a fixture copy written by the plugin inside the 12.3 container loads in
+jClipCorn (`CCMovieList.connectAndLoadDirect`) with the new entries and cleared tags, and
+jClipCorn's validator (`presetDefault`) reports exactly the same errors before and after the
+write — provided jClipCorn's JVM runs in the configured `ClipCornTimeZone`. With a different
+zone, a fresh entry can lie in jClipCorn's future and `CCDateTimeList.isValid()` reports
+"Invalid history". The throwaway check is kept in
+`Jellyfin.Plugin.CcSync.Tests/Fixtures/generator/JellyfinCcSyncReopen.java.txt`.
 
 ## Side effects the plugin does not reproduce
 

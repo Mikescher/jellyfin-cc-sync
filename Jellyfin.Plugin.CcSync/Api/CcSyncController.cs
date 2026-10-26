@@ -2,6 +2,8 @@ using System.Net.Mime;
 using Jellyfin.Plugin.CcSync.ClipCorn;
 using Jellyfin.Plugin.CcSync.Configuration;
 using Jellyfin.Plugin.CcSync.State;
+using Jellyfin.Plugin.CcSync.Tasks;
+using MediaBrowser.Model.Tasks;
 using MediaBrowser.Common.Api;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -24,12 +26,14 @@ public class CcSyncController : ControllerBase
     private readonly CcProbe _probe;
     private readonly HistoryStore _history;
     private readonly PendingStore _pending;
+    private readonly ITaskManager _taskManager;
 
-    public CcSyncController(CcProbe probe, HistoryStore history, PendingStore pending)
+    public CcSyncController(CcProbe probe, HistoryStore history, PendingStore pending, ITaskManager taskManager)
     {
         _probe = probe;
         _history = history;
         _pending = pending;
+        _taskManager = taskManager;
     }
 
     private static PluginConfiguration Config => Plugin.Instance?.Configuration ?? new PluginConfiguration();
@@ -87,6 +91,7 @@ public class CcSyncController : ControllerBase
         }
 
         RecordManual(id, HistoryKinds.PendingRetry, "retried by hand");
+        _taskManager.QueueScheduledTask<FlushPendingTask>();
         return NoContent();
     }
 
@@ -100,6 +105,14 @@ public class CcSyncController : ControllerBase
         }
 
         RecordManual(id, HistoryKinds.PendingDiscarded, "discarded by hand");
+        return NoContent();
+    }
+
+    /// <summary>Queues the write task now instead of waiting for its trigger.</summary>
+    [HttpPost("Flush/Run")]
+    public ActionResult RunFlush()
+    {
+        _taskManager.QueueScheduledTask<FlushPendingTask>();
         return NoContent();
     }
 
