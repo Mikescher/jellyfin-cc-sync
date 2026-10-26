@@ -72,6 +72,7 @@ jellyfin-sync/
 ├── manifest.json                 plugin repository
 ├── releases/                     committed release zips
 ├── Directory.Build.props         version, net10.0, nullable, warnings as errors
+├── global.json                   `dotnet test` on Microsoft.Testing.Platform (xunit.v3)
 ├── Jellyfin.Plugin.CcSync.slnx
 ├── Makefile                      build / test / deploy / package / release
 ├── .github/workflows/release.yml
@@ -358,6 +359,10 @@ Each phase ends with `make build` + `make test` green and a commit.
   the name fallback).
 - `Microsoft.Data.Sqlite` compile-only reference: confirm no SQLite assemblies or native libs in
   the publish output and that the server's 10.0.12 copy is used at runtime.
+  **Publish output verified (phase 1):** the 12.3 server ships `Microsoft.Data.Sqlite.Core`
+  10.0.12 (not the `Microsoft.Data.Sqlite` meta package); the plugin references exactly that,
+  compile-only, and the publish output holds only `Jellyfin.Plugin.CcSync.dll` (+ pdb/deps.json,
+  not packaged). `scripts/package.py` refuses a publish folder with any other dll or native lib.
 - SQLite writes over the actual mount (cifs without `nobrl`, or NFSv4): run the writer once
   against the real share with jClipCorn closed and re-open in jClipCorn.
 - Jellyfin's NFO parser only imports `<playcount>`/`<lastplayed>` when an NFO user is configured
@@ -369,6 +374,10 @@ Each phase ends with `make build` + `make test` green and a commit.
   `git.blackforestbytes.com/Mikescher/jellyfin-sync`; the plan assumes a GitHub mirror
   `Mikescher/jellyfin-sync` with the same scheme. If there is none, the manifest URLs move to
   the Gitea raw URLs and the release workflow to `.gitea/workflows/`.
+  **Checked (phase 1):** `github.com/Mikescher/jellyfin-sync` does not exist yet (404), and
+  `git.blackforestbytes.com` redirects anonymous requests to the login page, so Gitea raw URLs
+  cannot serve a Jellyfin repository either. The GitHub scheme stays; the mirror has to be
+  created (and added as remote `github`, like watchnotify) before the first release.
 
 ## 13. Later, not in this plan
 

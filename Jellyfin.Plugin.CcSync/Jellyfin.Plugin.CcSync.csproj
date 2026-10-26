@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>Jellyfin.Plugin.CcSync</AssemblyName>
+    <RootNamespace>Jellyfin.Plugin.CcSync</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The server supplies these at runtime; shipping copies would shadow its own. -->
+    <PackageReference Include="Jellyfin.Controller" Version="12.3.0">
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </PackageReference>
+    <PackageReference Include="Jellyfin.Model" Version="12.3.0">
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </PackageReference>
+    <!-- Compile-only: the server's copy and its initialised SQLitePCLRaw provider are used at runtime. -->
+    <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="10.0.12">
+      <IncludeAssets>compile</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Jellyfin.Plugin.CcSync.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="Configuration\*.html;Configuration\*.js" />
+    <EmbeddedResource Include="Configuration\*.html;Configuration\*.js" />
+  </ItemGroup>
+
+</Project>

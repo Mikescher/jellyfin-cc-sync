@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <RootNamespace>Jellyfin.Plugin.CcSync.Tests</RootNamespace>
+    <!-- The Jellyfin packages pull in ASP.NET Core; nothing under test needs it, so the
+         tests run on the plain .NET runtime. -->
+    <DisableTransitiveFrameworkReferences>true</DisableTransitiveFrameworkReferences>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" Version="4.0.2" />
+    <!-- Unlike the plugin, the tests need the runtime assemblies the server would provide. -->
+    <PackageReference Include="Jellyfin.Controller" Version="12.3.0" />
+    <PackageReference Include="Jellyfin.Model" Version="12.3.0" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.12" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Jellyfin.Plugin.CcSync\Jellyfin.Plugin.CcSync.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="Fixtures\**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

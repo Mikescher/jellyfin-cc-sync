@@ -127,9 +127,13 @@ new TaskTriggerInfo { Type = TaskTriggerInfoType.IntervalTrigger, IntervalTicks 
 - Jellyfin 12.3 ships `Microsoft.Data.Sqlite` 10.0.12 and `SQLitePCLRaw` 2.1.12 (SQLite 3.53.3)
   and initialises the provider.
 - Plugin assemblies fall back to the server's copy when they are not in the plugin folder.
-  Reference the package compile-only (`IncludeAssets=compile`, version <= 10.0.12) and verify the
-  publish output contains only `Jellyfin.Plugin.CcSync.dll`. Never ship SQLitePCLRaw or a native
-  `libe_sqlite3`: a second copy has its own static state.
+  The server's `jellyfin.deps.json` lists `Microsoft.Data.Sqlite.Core` (not the
+  `Microsoft.Data.Sqlite` meta package); reference that one compile-only (`IncludeAssets=compile`,
+  version <= 10.0.12) and verify the publish output contains only `Jellyfin.Plugin.CcSync.dll`.
+  Never ship SQLitePCLRaw or a native `libe_sqlite3`: a second copy has its own static state.
+- The Jellyfin packages carry a framework reference to `Microsoft.AspNetCore.App`. The test
+  project sets `DisableTransitiveFrameworkReferences` so it runs on the plain .NET runtime;
+  tests must not touch Jellyfin types that need ASP.NET Core.
 - `Mode=ReadOnly` → `SQLITE_OPEN_READONLY`; a `Data Source=file:…?immutable=1` URI is honoured.
   `immutable=1` only on private snapshots, never on the live share.
 - Pooling is on by default and keeps file handles open after `Close()`. Use `Pooling=False` for

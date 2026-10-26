@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="Jellyfin.Plugin.CcSync/Jellyfin.Plugin.CcSync.csproj" />
+  <Project Path="Jellyfin.Plugin.CcSync.Tests/Jellyfin.Plugin.CcSync.Tests.csproj" />
+</Solution>
