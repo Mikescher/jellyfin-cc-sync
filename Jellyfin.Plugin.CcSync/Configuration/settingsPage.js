@@ -2,6 +2,25 @@ import { pluginId, escapeHtml, numberOr, setupTabs } from './configurationpage?n
 
 const levelColors = { ok: '#52b54b', warn: '#e5a00d', error: '#cc3333' };
 
+// Stored score values in rank order; the stored value is not the rank (see docs/clipcorn-db.md).
+const scores = [
+    [5, 'Masterpiece'], [4, 'Favourite'], [3, 'Recommended'], [7, 'Average'],
+    [2, 'Not recommended'], [1, 'Bad'], [0, 'Crap']
+];
+
+const checkboxes = [
+    'WriteBackEnabled', 'ManualMarkCreatesPending', 'ResetWatchLaterOnWatch',
+    'SyncEnabled', 'SyncPlayed', 'SyncPlayCount', 'SyncLastPlayed', 'SyncFavorites',
+    'RatingTagsEnabled', 'GroupTagsEnabled', 'GroupTagsIncludeParents',
+    'ApplyRatingsToMovies', 'ApplyRatingsToSeries', 'ApplyRatingsToSeasons', 'ApplyRatingsToEpisodes',
+    'LockTagsField', 'DryRun', 'WriteToActivityLog'
+];
+
+const numbers = {
+    WatchedThreshold: 0.9, DedupMinutes: 60, StartCoalesceMinutes: 10,
+    MaxChangesPerRun: 100, MaxUnwatchPerRun: 20, HistoryRetentionDays: 0
+};
+
 // Jellyfin renders ids with or without dashes depending on the endpoint.
 function normalizeId(id) {
     return String(id || '').replace(/-/g, '').toLowerCase();
@@ -45,12 +64,13 @@ export default function (view) {
             renderUsers(field('SyncUserId'), users, config.SyncUserId);
             renderLibraries(view.querySelector('#ccSyncLibraries'), libraries || [], config.LibraryIds);
 
-            field('WriteBackEnabled').checked = config.WriteBackEnabled;
-            field('WatchedThreshold').value = config.WatchedThreshold;
-            field('DedupMinutes').value = config.DedupMinutes;
-            field('StartCoalesceMinutes').value = config.StartCoalesceMinutes;
-            field('ManualMarkCreatesPending').checked = config.ManualMarkCreatesPending;
-            field('ResetWatchLaterOnWatch').checked = config.ResetWatchLaterOnWatch;
+            checkboxes.forEach((id) => { field(id).checked = !!config[id]; });
+            Object.keys(numbers).forEach((id) => { field(id).value = config[id]; });
+
+            const favourite = new Set(config.FavoriteScores || []);
+            view.querySelector('#ccSyncFavoriteScores').innerHTML = scores.map(([value, label]) =>
+                '<label class="checkboxContainer"><input is="emby-checkbox" type="checkbox" class="ccSyncScore" data-score="' + value + '"'
+                + (favourite.has(value) ? ' checked' : '') + ' /><span>' + escapeHtml(label) + '</span></label>').join('');
             Dashboard.hideLoadingMsg();
         }).catch((err) => {
             console.error('[CcSync] could not load the configuration', err);
@@ -72,12 +92,11 @@ export default function (view) {
                 .filter((el) => el.checked)
                 .map((el) => el.getAttribute('data-id'));
 
-            config.WriteBackEnabled = field('WriteBackEnabled').checked;
-            config.WatchedThreshold = numberOr(field('WatchedThreshold'), 0.9);
-            config.DedupMinutes = numberOr(field('DedupMinutes'), 60);
-            config.StartCoalesceMinutes = numberOr(field('StartCoalesceMinutes'), 10);
-            config.ManualMarkCreatesPending = field('ManualMarkCreatesPending').checked;
-            config.ResetWatchLaterOnWatch = field('ResetWatchLaterOnWatch').checked;
+            checkboxes.forEach((id) => { config[id] = field(id).checked; });
+            Object.keys(numbers).forEach((id) => { config[id] = numberOr(field(id), numbers[id]); });
+            config.FavoriteScores = Array.from(view.querySelectorAll('.ccSyncScore'))
+                .filter((el) => el.checked)
+                .map((el) => Number(el.getAttribute('data-score')));
 
             ApiClient.updatePluginConfiguration(pluginId, config).then((result) => {
                 Dashboard.processPluginConfigurationUpdateResult(result);

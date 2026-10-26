@@ -21,9 +21,10 @@ as "Invalid history".
 ## Jellyfin settings
 
 - Dashboard → NFO Settings → "Save user watch data to NFO files for": **leave empty**, or at
-  least not the sync user. Otherwise Jellyfin imports jClipCorn's NFO `<playcount>`/
-  `<lastplayed>` into that user's data on refresh (stale after plugin writes, and in jClipCorn's
-  UI date format) and writes watch data back into jClipCorn's NFO files.
+  least not the sync user. Otherwise Jellyfin writes that user's watch data into jClipCorn's NFO
+  files on every watch, mark-played and rating change. (Importing `<playcount>`/`<lastplayed>`
+  from NFOs does not happen in 12.3 even with a user set, see `jellyfin-api.md`.) The Status page
+  warns when the setting names the sync user.
 - Everything else is configured on the plugin's own page (Dashboard → Plugins → jellyfin-cc-sync).
 
 ## Making the database visible to Jellyfin

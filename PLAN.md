@@ -388,9 +388,16 @@ Each phase ends with `make build` + `make test` green and a commit.
   jClipCorn (see `docs/clipcorn-db.md` § Write recipe). The run against the real share is still
   open and needs the user.
 - Jellyfin's NFO parser only imports `<playcount>`/`<lastplayed>` when an NFO user is configured
-  (deployment.md recommends none); confirm in `BaseNfoParser`.
+  (deployment.md recommends none); confirm in `BaseNfoParser`. **Verified (phase 7):** in 12.3 it
+  never imports during a refresh, not even with a user set (the provider parses into an item
+  without id; `docs/jellyfin-api.md` § NFO user data). Keeping the setting empty still matters:
+  the NFO saver writes watch data into jClipCorn's NFOs.
 - `SaveUserData` with `Import` on an item the user is currently playing: confirm the session's
-  own save afterwards does not resurrect stale values in a way that loops.
+  own save afterwards does not resurrect stale values in a way that loops. **Verified (phase 7):**
+  start (Jellyfin raises PlayCount 2 → 3), sync during playback (Import resets it to 2), progress
+  and stop: the session reads fresh data and keeps 2; the watch becomes a pending update, is
+  written after the 15 s debounce, the next sync sets 3 and the start time, the one after has
+  nothing to do.
 - Release hosting: watchnotify publishes `manifest.json` and zips via its GitHub mirror
   (`raw.githubusercontent.com/Mikescher/jellyfin-watchnotify`). This repo's `origin` is
   `git.blackforestbytes.com/Mikescher/jellyfin-sync`; the plan assumes a GitHub mirror

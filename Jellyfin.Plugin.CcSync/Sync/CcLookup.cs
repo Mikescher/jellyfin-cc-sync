@@ -5,7 +5,7 @@ using Jellyfin.Plugin.CcSync.ClipCorn.Model;
 namespace Jellyfin.Plugin.CcSync.Sync;
 
 /// <summary>A fallback match and the key that produced it.</summary>
-public sealed record FallbackResult<T>(T? Match, string? Via, string? Problem)
+public sealed record FallbackResult<T>(T? Match, string? Via, string? Problem, bool Ambiguous = false)
     where T : CcElement;
 
 /// <summary>
@@ -74,7 +74,8 @@ public sealed class CcLookup
         return builder.ToString().Normalize(NormalizationForm.FormC);
     }
 
-    public FallbackResult<CcMovie> FindMovie(string? tmdb, string? imdb, string? name, int? year)
+    /// <param name="exclude">Element ids that are already matched by clipcorn id and are not offered again.</param>
+    public FallbackResult<CcMovie> FindMovie(string? tmdb, string? imdb, string? name, int? year, IReadOnlySet<string>? exclude = null)
     {
         var chain = new List<(string Via, IEnumerable<CcMovie> Candidates)>();
         if (!string.IsNullOrWhiteSpace(tmdb))
@@ -92,10 +93,10 @@ public sealed class CcLookup
             chain.Add(($"name \"{name}\" + year {year}", _movieName[NameYearKey(name!, year.Value)]));
         }
 
-        return Walk(chain);
+        return Walk(chain, exclude);
     }
 
-    public FallbackResult<CcSeries> FindSeries(string? tmdb, string? imdb, string? name, int? year)
+    public FallbackResult<CcSeries> FindSeries(string? tmdb, string? imdb, string? name, int? year, IReadOnlySet<string>? exclude = null)
     {
         var chain = new List<(string Via, IEnumerable<CcSeries> Candidates)>();
         if (!string.IsNullOrWhiteSpace(tmdb))
@@ -120,15 +121,15 @@ public sealed class CcLookup
             chain.Add(($"name \"{name}\"" + (year is > 0 ? $" + year {year}" : string.Empty), byName));
         }
 
-        return Walk(chain);
+        return Walk(chain, exclude);
     }
 
-    private static FallbackResult<T> Walk<T>(List<(string Via, IEnumerable<T> Candidates)> chain)
+    private static FallbackResult<T> Walk<T>(List<(string Via, IEnumerable<T> Candidates)> chain, IReadOnlySet<string>? exclude)
         where T : CcElement
     {
         foreach (var (via, candidates) in chain)
         {
-            var found = candidates.Take(2).ToList();
+            var found = candidates.Where(c => exclude is null || !exclude.Contains(c.Id)).Take(2).ToList();
             if (found.Count == 1)
             {
                 return new FallbackResult<T>(found[0], via, null);
@@ -136,7 +137,7 @@ public sealed class CcLookup
 
             if (found.Count > 1)
             {
-                return new FallbackResult<T>(null, via, $"{via} matches several jClipCorn elements");
+                return new FallbackResult<T>(null, via, $"{via} matches several jClipCorn elements", Ambiguous: true);
             }
         }
 

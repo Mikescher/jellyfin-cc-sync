@@ -1,4 +1,6 @@
+using Jellyfin.Plugin.CcSync.Api;
 using Jellyfin.Plugin.CcSync.ClipCorn;
+using Jellyfin.Plugin.CcSync.Jellyfin;
 using Jellyfin.Plugin.CcSync.State;
 using Jellyfin.Plugin.CcSync.Sync;
 using Jellyfin.Plugin.CcSync.Watch;
@@ -25,6 +27,10 @@ public class PluginServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.AddSingleton<SessionTracker>();
         serviceCollection.AddSingleton<SyncGate>();
         serviceCollection.AddSingleton<FlushEngine>();
+        serviceCollection.AddSingleton<JfIndex>();
+        serviceCollection.AddSingleton<JfApplier>();
+        serviceCollection.AddSingleton<SyncEngine>();
+        serviceCollection.AddSingleton<StatusService>();
         serviceCollection.AddHostedService<WatchEntryPoint>();
     }
 }

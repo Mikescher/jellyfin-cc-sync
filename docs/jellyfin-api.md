@@ -66,7 +66,9 @@ row.
     save a fully loaded `GetItemById` instance.
 - Metadata refresh (`MediaBrowser.Providers/Manager/MetadataService.cs`):
   - normal scan/refresh: existing tags ∪ NFO tags ∪ TMDb keyword tags → `jcc-*` tags survive;
-  - "Replace all metadata" and Identify drop existing tags → the next sync re-adds them;
+  - "Replace all metadata" and Identify drop existing tags → the next sync re-adds them (both
+    verified in the 12.3 container; the NFO file stayed untouched by the plugin's
+    `MetadataImport` saves);
   - Identify also replaces the provider ids, dropping `clipcorn` until the next normal refresh;
     the item is then matched by the TMDB/IMDB/name fallback or reported as unmatched.
   - `MetadataField.Tags` in `item.LockedFields` protects tags in every mode but also freezes
@@ -90,13 +92,31 @@ row.
       DtoOptions = new DtoOptions(false) { Fields = [ItemFields.ProviderIds], EnableImages = false, EnableUserData = false },
   });
   ```
-  Restrict to selected libraries via `AncestorIds` or `TopParentIds` (not verified which one
-  matches library root folders in 12.3; test against a multi-library server). `HasAnyProviderId`
+  The index also needs `ItemFields.Tags` and `ItemFields.Path`, and **without
+  `ItemFields.ProviderIds` in `Fields` the items come back with empty `ProviderIds`** (verified:
+  everything then fell through to the name fallback).
+  Restrict to selected libraries with `AncestorIds = [<library ItemId from /Library/VirtualFolders>]`;
+  `LibraryManager` turns ancestor ids that are top parents into the physical folders'
+  `TopParentIds`. Verified in 12.3 with two libraries: `TopParentIds = [<library ItemId>]`
+  returns nothing, `AncestorIds` returns exactly that library's items. `HasAnyProviderId`
   (`["clipcorn"] = ""` = any value) narrows to NFO-tagged items, but the index needs untagged
   items too (fallback matching, removal of stale `jcc-*` tags).
 - Useful members: `ProductionYear`, `Name`, `Episode.SeriesId`, `Episode.SeasonId`,
   `ParentIndexNumber`, `IndexNumber`, `Season.SeriesId`.
 - Alternate versions are excluded by default.
+
+## NFO user data
+
+`BaseNfoParser` imports `<watched>`, `<playcount>` and `<lastplayed>` only for the NFO user and
+only into an item with an id; `BaseNfoProvider` parses into a fresh `new T { IndexNumber = … }`,
+so a refresh never imports user data in 12.3 (verified empirically with and without NFO user,
+and in `MediaBrowser.XbmcMetadata` at `v12.3`). The NFO *saver* does write watch data when a user
+is set.
+
+## API responses
+
+Jellyfin's JSON output omits null properties, so the pages test fields for presence instead of
+`null`.
 
 ## Playback events (watch detection)
 

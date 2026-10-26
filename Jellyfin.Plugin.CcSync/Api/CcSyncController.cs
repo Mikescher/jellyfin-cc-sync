@@ -2,9 +2,10 @@ using System.Net.Mime;
 using Jellyfin.Plugin.CcSync.ClipCorn;
 using Jellyfin.Plugin.CcSync.Configuration;
 using Jellyfin.Plugin.CcSync.State;
+using Jellyfin.Plugin.CcSync.Sync;
 using Jellyfin.Plugin.CcSync.Tasks;
-using MediaBrowser.Model.Tasks;
 using MediaBrowser.Common.Api;
+using MediaBrowser.Model.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -26,17 +27,74 @@ public class CcSyncController : ControllerBase
     private readonly CcProbe _probe;
     private readonly HistoryStore _history;
     private readonly PendingStore _pending;
+    private readonly RunStore _runs;
+    private readonly SyncEngine _sync;
+    private readonly StatusService _status;
     private readonly ITaskManager _taskManager;
 
-    public CcSyncController(CcProbe probe, HistoryStore history, PendingStore pending, ITaskManager taskManager)
+    public CcSyncController(
+        CcProbe probe,
+        HistoryStore history,
+        PendingStore pending,
+        RunStore runs,
+        SyncEngine sync,
+        StatusService status,
+        ITaskManager taskManager)
     {
         _probe = probe;
         _history = history;
         _pending = pending;
+        _runs = runs;
+        _sync = sync;
+        _status = status;
         _taskManager = taskManager;
     }
 
     private static PluginConfiguration Config => Plugin.Instance?.Configuration ?? new PluginConfiguration();
+
+    [HttpGet("Status")]
+    public ActionResult<StatusResponse> GetStatus() => _status.Build(Config);
+
+    /// <summary>The last sync's match report with its lists.</summary>
+    [HttpGet("Matching")]
+    public ActionResult<MatchReport> GetMatching()
+        => _runs.GetJson<MatchReport>(RunStore.MatchReportKey) is { } report ? report : NoContent();
+
+    /// <summary>Queues the sync task (guards apply).</summary>
+    [HttpPost("Sync/Run")]
+    public ActionResult RunSync()
+    {
+        _taskManager.QueueScheduledTask<SyncFromClipCornTask>();
+        return NoContent();
+    }
+
+    /// <summary>Plans a sync without applying anything and returns the stored preview.</summary>
+    [HttpPost("Sync/Preview")]
+    public async Task<ActionResult<SyncRunResponse>> Preview(CancellationToken cancellationToken)
+    {
+        var result = await _sync.RunAsync(SyncMode.Preview, null, cancellationToken).ConfigureAwait(false);
+        return new SyncRunResponse { Outcome = result.Outcome, Message = result.Message, RunId = result.RunId };
+    }
+
+    [HttpGet("Sync/Preview")]
+    public ActionResult<SyncPreview> GetPreview()
+        => _runs.GetJson<SyncPreview>(RunStore.PreviewPlanKey) is { } preview ? preview : NoContent();
+
+    /// <summary>
+    /// Applies the stored preview once with the guard lifted, in the background; the run is refused
+    /// when jClipCorn or the pending updates changed since the preview.
+    /// </summary>
+    [HttpPost("Sync/Apply")]
+    public ActionResult ApplyPreview([FromQuery] string planId)
+    {
+        if (_runs.GetJson<SyncPreview>(RunStore.PreviewPlanKey)?.PlanId != planId)
+        {
+            return Conflict("This preview is no longer the stored one.");
+        }
+
+        _ = Task.Run(() => _sync.RunAsync(SyncMode.Apply, planId, CancellationToken.None), CancellationToken.None);
+        return Accepted();
+    }
 
     [HttpPost("Probe")]
     public async Task<ActionResult<ProbeResponse>> Probe([FromBody] ProbeRequest? request, CancellationToken cancellationToken)

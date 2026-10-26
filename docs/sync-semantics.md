@@ -203,9 +203,14 @@ the next CC → JF sync.
 - Change guard: a run that would change more than `MaxChangesPerRun` items (default 100) or
   un-watch more than `MaxUnwatchPerRun` items (default 20) stops before applying and stores the
   plan as a preview. The Status page shows it; "Apply" runs it once with the guard lifted. The
-  first run after setup always hits the guard.
+  first run after setup (no sync run with outcome `applied` yet) always hits the guard when it
+  has anything to change.
+- "Apply" plans again against the current Jellyfin state and applies that plan. It is refused
+  when the stored preview was replaced or when the fingerprint of the jClipCorn files (size,
+  mtime, header change counter of both DBs) and the set of pending updates differs from the
+  preview's. It also runs with `DryRun` on, as an explicit confirmation.
 - `DryRun` computes and stores the plan, writes history entries of kind `planned-*`, applies
-  nothing.
+  nothing. The same plan again (every 30 minutes in dry-run mode) is not recorded again.
 
 ## History
 

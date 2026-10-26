@@ -2,9 +2,51 @@
      data-controller="__plugin/CcSyncStatus.js">
     <div data-role="content">
         <div class="content-primary">
+
+            <div id="ccStWarnings" style="margin-bottom: 1em;"></div>
+
             <div class="verticalSection">
-                <h2 class="sectionTitle">Status</h2>
+                <h2 class="sectionTitle">jClipCorn</h2>
+                <div id="ccStHealth"></div>
             </div>
+
+            <div class="verticalSection">
+                <h2 class="sectionTitle">Runs</h2>
+                <div id="ccStRuns"></div>
+                <div style="display: flex; flex-wrap: wrap; gap: .5em; margin-top: 1em;">
+                    <button is="emby-button" type="button" id="ccStRunSync" class="raised"><span>Run sync now</span></button>
+                    <button is="emby-button" type="button" id="ccStPreview" class="raised"><span>Preview</span></button>
+                    <button is="emby-button" type="button" id="ccStFlush" class="raised"><span>Write pending now</span></button>
+                </div>
+                <div id="ccStActionResult" class="fieldDescription" style="margin-top: .5em;"></div>
+            </div>
+
+            <div class="verticalSection hide" id="ccStPreviewSection">
+                <h2 class="sectionTitle">Waiting for confirmation</h2>
+                <div id="ccStPreviewInfo"></div>
+                <button is="emby-button" type="button" id="ccStApply" class="raised button-submit" style="margin: 1em 0;"><span>Apply these changes</span></button>
+                <div style="overflow-x: auto;">
+                    <table class="detailTable" style="width: 100%;">
+                        <thead>
+                            <tr>
+                                <th class="detailTableHeaderCell">Item</th>
+                                <th class="detailTableHeaderCell">Watched</th>
+                                <th class="detailTableHeaderCell">Favourite</th>
+                                <th class="detailTableHeaderCell">Tags</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ccStPreviewRows"></tbody>
+                    </table>
+                </div>
+                <p id="ccStPreviewMore" class="fieldDescription"></p>
+            </div>
+
+            <div class="verticalSection">
+                <h2 class="sectionTitle">Matching</h2>
+                <div id="ccStMatch"></div>
+                <div id="ccStMatchLists"></div>
+            </div>
+
         </div>
     </div>
 </div>

@@ -85,6 +85,82 @@
                     </label>
                 </div>
 
+                <div class="verticalSection">
+                    <h2 class="sectionTitle">jClipCorn → Jellyfin</h2>
+
+                    <label class="checkboxContainer">
+                        <input is="emby-checkbox" type="checkbox" id="SyncEnabled" />
+                        <span>Sync from jClipCorn (task "Sync jClipCorn → Jellyfin", every 30 minutes by default)</span>
+                    </label>
+
+                    <div class="fieldDescription" style="margin: .5em 0;">Owned watch fields (jClipCorn overwrites them):</div>
+                    <label class="checkboxContainer"><input is="emby-checkbox" type="checkbox" id="SyncPlayed" /><span>Played</span></label>
+                    <label class="checkboxContainer"><input is="emby-checkbox" type="checkbox" id="SyncPlayCount" /><span>Play count</span></label>
+                    <label class="checkboxContainer"><input is="emby-checkbox" type="checkbox" id="SyncLastPlayed" /><span>Last played date</span></label>
+
+                    <label class="checkboxContainer">
+                        <input is="emby-checkbox" type="checkbox" id="SyncFavorites" />
+                        <span>Favourites from the jClipCorn score</span>
+                    </label>
+                    <div class="fieldDescription" style="margin: .5em 0;">Scores that mean favourite:</div>
+                    <div id="ccSyncFavoriteScores" class="checkboxList" style="margin-bottom: 1em;"></div>
+
+                    <label class="checkboxContainer">
+                        <input is="emby-checkbox" type="checkbox" id="RatingTagsEnabled" />
+                        <span>Rating tags (<code>jcc-rating-masterpiece</code>, …)</span>
+                    </label>
+                    <label class="checkboxContainer">
+                        <input is="emby-checkbox" type="checkbox" id="GroupTagsEnabled" />
+                        <span>Group tags for movies and series (<code>jcc-mcu</code>, …)</span>
+                    </label>
+                    <label class="checkboxContainer">
+                        <input is="emby-checkbox" type="checkbox" id="GroupTagsIncludeParents" />
+                        <span>Also tag the parent groups</span>
+                    </label>
+
+                    <div class="fieldDescription" style="margin: .5em 0;">Favourites and rating tags apply to:</div>
+                    <label class="checkboxContainer"><input is="emby-checkbox" type="checkbox" id="ApplyRatingsToMovies" /><span>Movies</span></label>
+                    <label class="checkboxContainer"><input is="emby-checkbox" type="checkbox" id="ApplyRatingsToSeries" /><span>Series</span></label>
+                    <label class="checkboxContainer"><input is="emby-checkbox" type="checkbox" id="ApplyRatingsToSeasons" /><span>Seasons</span></label>
+                    <label class="checkboxContainer"><input is="emby-checkbox" type="checkbox" id="ApplyRatingsToEpisodes" /><span>Episodes</span></label>
+
+                    <label class="checkboxContainer">
+                        <input is="emby-checkbox" type="checkbox" id="LockTagsField" />
+                        <span>Lock the Tags field of tagged items</span>
+                    </label>
+                    <div class="fieldDescription">Protects the tags from "Replace all metadata" and Identify, but also freezes TMDb keyword tags.</div>
+                </div>
+
+                <div class="verticalSection">
+                    <h2 class="sectionTitle">Safety</h2>
+
+                    <label class="checkboxContainer">
+                        <input is="emby-checkbox" type="checkbox" id="DryRun" />
+                        <span>Dry run: plan and record, apply nothing</span>
+                    </label>
+
+                    <div class="inputContainer">
+                        <input is="emby-input" type="number" id="MaxChangesPerRun" label="Changed items per run without confirmation" min="0" step="1" />
+                    </div>
+                    <div class="inputContainer">
+                        <input is="emby-input" type="number" id="MaxUnwatchPerRun" label="Un-watched items per run without confirmation" min="0" step="1" />
+                        <div class="fieldDescription">A run above either limit stops before applying and waits on the Status page. The first sync always does.</div>
+                    </div>
+                </div>
+
+                <div class="verticalSection">
+                    <h2 class="sectionTitle">History</h2>
+
+                    <div class="inputContainer">
+                        <input is="emby-input" type="number" id="HistoryRetentionDays" label="Keep history entries (days, 0 = forever)" min="0" step="1" />
+                    </div>
+
+                    <label class="checkboxContainer">
+                        <input is="emby-checkbox" type="checkbox" id="WriteToActivityLog" />
+                        <span>Also write failures, aborts and guard stops to Jellyfin's activity log</span>
+                    </label>
+                </div>
+
                 <div>
                     <button is="emby-button" type="submit" class="raised button-submit block">
                         <span>Save</span>

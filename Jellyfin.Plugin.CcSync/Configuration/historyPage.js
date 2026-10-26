@@ -47,7 +47,7 @@ export default function (view) {
             const color = e.Success ? '' : ' style="color: #cc3333;"';
             const isRun = e.Kind === 'run-sync' || e.Kind === 'run-flush';
             const kindCell = isRun && e.RunId
-                ? '<a href="#" class="ccHistRunLink" data-run="' + escapeHtml(e.RunId) + '">' + escapeHtml(e.Kind) + '</a>'
+                ? '<a href="#" class="ccHistRunLink" style="color: #00a4dc;" data-run="' + escapeHtml(e.RunId) + '">' + escapeHtml(e.Kind) + '</a>'
                 : escapeHtml(e.Kind);
             const change = (e.OldValue != null || e.NewValue != null)
                 ? escapeHtml(e.OldValue == null ? '∅' : e.OldValue) + ' → ' + escapeHtml(e.NewValue == null ? '∅' : e.NewValue)
