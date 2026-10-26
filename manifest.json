@@ -13,8 +13,8 @@
                 "changelog": "First release: jClipCorn \u2192 Jellyfin sync of watched state, favourites and jcc-* tags; Jellyfin watches written back into jClipCorn's viewed history; preview/apply guard, pending queue and full history.",
                 "targetAbi": "12.3.0.0",
                 "sourceUrl": "https://raw.githubusercontent.com/Mikescher/jellyfin-sync/master/releases/jellyfin-cc-sync_1.0.0.0.zip",
-                "checksum": "3099c3dc90f3b59f16230c9d2e4c6c24",
-                "timestamp": "2026-10-26T22:56:34Z"
+                "checksum": "69776cc86ec937baeacca155ab7d8ff7",
+                "timestamp": "2026-10-26T23:06:17Z"
             }
         ]
     }
