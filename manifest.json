@@ -6,13 +6,13 @@
         "overview": "Syncs watch state, favourites and tags with a jClipCorn database",
         "owner": "Mikescher",
         "category": "General",
-        "imageUrl": "https://raw.githubusercontent.com/Mikescher/jellyfin-sync/master/assets/logo.png",
+        "imageUrl": "https://raw.githubusercontent.com/Mikescher/jellyfin-cc-sync/master/assets/logo.png",
         "versions": [
             {
                 "version": "1.0.0.0",
                 "changelog": "First release: jClipCorn \u2192 Jellyfin sync of watched state, favourites and jcc-* tags; Jellyfin watches written back into jClipCorn's viewed history; preview/apply guard, pending queue and full history.",
                 "targetAbi": "12.3.0.0",
-                "sourceUrl": "https://raw.githubusercontent.com/Mikescher/jellyfin-sync/master/releases/jellyfin-cc-sync_1.0.0.0.zip",
+                "sourceUrl": "https://raw.githubusercontent.com/Mikescher/jellyfin-cc-sync/master/releases/jellyfin-cc-sync_1.0.0.0.zip",
                 "checksum": "69776cc86ec937baeacca155ab7d8ff7",
                 "timestamp": "2026-10-26T23:06:17Z"
             }

@@ -1,4 +1,4 @@
-# jellyfin-sync
+# jellyfin-cc-sync
 
 <img src="assets/logo.png" alt="jellyfin-cc-sync" width="560">
 
@@ -16,7 +16,7 @@
 Dashboard → Plugins → Repositories → add:
 
 ```
-https://raw.githubusercontent.com/Mikescher/jellyfin-sync/master/manifest.json
+https://raw.githubusercontent.com/Mikescher/jellyfin-cc-sync/master/manifest.json
 ```
 
 Then install **jellyfin-cc-sync** from the catalogue and restart the server. Requires Jellyfin

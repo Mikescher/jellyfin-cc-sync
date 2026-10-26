@@ -28,7 +28,7 @@ Reference documents (read these before implementing a component):
 
 | Topic | Decision | Why |
 |---|---|---|
-| Name | Display name `jellyfin-cc-sync`; assembly/namespace `Jellyfin.Plugin.CcSync`; repo stays `jellyfin-sync` | C# identifiers cannot contain `-` |
+| Name | Display name `jellyfin-cc-sync`; assembly/namespace `Jellyfin.Plugin.CcSync`; Gitea repo stays `jellyfin-sync`, the GitHub mirror is `jellyfin-cc-sync` | C# identifiers cannot contain `-` |
 | DB access | A directory path (bind mount / Docker cifs or nfs volume / same NAS). No SMB/NFS client in the plugin | A container cannot mount; SQLite's own journal + locks only work on a real file system; least code |
 | Reading | Copy `ClipCornDB.db` + `ClipCornUserData.db` to a local snapshot, verify stability, open the snapshot `immutable=1` | No SQLite locks on the live files, so a running jClipCorn never sees `SQLITE_BUSY` from us; a torn copy is detected and the run aborts |
 | Writing | Only `ClipCornUserData.db`, only while no jClipCorn lock is held, in one transaction, after a rotating backup | jClipCorn keeps everything in memory and would overwrite concurrent writes; the main DB may be replaced wholesale by jcc-mirror |
@@ -64,7 +64,7 @@ Reference documents (read these before implementing a component):
 ## 3. Repository layout
 
 ```
-jellyfin-sync/
+jellyfin-cc-sync/
 ├── PLAN.md  README.md  CLAUDE.md  .gitignore
 ├── docs/                         clipcorn-db.md, jellyfin-api.md, sync-semantics.md, deployment.md
 ├── assets/                       logo.svg (source, outlined wordmark), logo.png (1600×900 render)
@@ -412,12 +412,12 @@ Each phase ends with `make build` + `make test` green and a commit.
 - Release hosting: watchnotify publishes `manifest.json` and zips via its GitHub mirror
   (`raw.githubusercontent.com/Mikescher/jellyfin-watchnotify`). This repo's `origin` is
   `git.blackforestbytes.com/Mikescher/jellyfin-sync`; the plan assumes a GitHub mirror
-  `Mikescher/jellyfin-sync` with the same scheme. If there is none, the manifest URLs move to
+  with the same scheme. If there is none, the manifest URLs move to
   the Gitea raw URLs and the release workflow to `.gitea/workflows/`.
-  **Checked (phase 1):** `github.com/Mikescher/jellyfin-sync` does not exist yet (404), and
-  `git.blackforestbytes.com` redirects anonymous requests to the login page, so Gitea raw URLs
-  cannot serve a Jellyfin repository either. The GitHub scheme stays; the mirror has to be
-  created (and added as remote `github`, like watchnotify) before the first release.
+  **Settled:** `git.blackforestbytes.com` redirects anonymous requests to the login page, so
+  Gitea raw URLs cannot serve a Jellyfin repository. The mirror is
+  `github.com/Mikescher/jellyfin-cc-sync` (remote `github`); `scripts/package.py` and
+  `manifest.json` point at its raw files.
 
 ## 13. Later, not in this plan
 

@@ -34,8 +34,8 @@ DESCRIPTION = (
 )
 TARGET_ABI = "12.3.0.0"
 FRAMEWORK = "net10.0"
-REPO_URL = "https://github.com/Mikescher/jellyfin-sync"
-RAW_URL = "https://raw.githubusercontent.com/Mikescher/jellyfin-sync/master"
+REPO_URL = "https://github.com/Mikescher/jellyfin-cc-sync"
+RAW_URL = "https://raw.githubusercontent.com/Mikescher/jellyfin-cc-sync/master"
 
 VERSION_RE = re.compile(r"^\d+\.\d+\.\d+\.\d+$")
 
