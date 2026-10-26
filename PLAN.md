@@ -80,12 +80,15 @@ jellyfin-sync/
 │   ├── Jellyfin.Plugin.CcSync.csproj
 │   ├── Plugin.cs                         BasePlugin<PluginConfiguration>, IHasWebPages
 │   ├── PluginServiceRegistrator.cs
-│   ├── Configuration/                    PluginConfiguration + 4 pages (html/js, embedded)
+│   ├── PluginPaths.cs                    <DataPath>/jellyfin-cc-sync/{state.db,snapshots,backups}
+│   ├── Configuration/                    PluginConfiguration, ConfigValues, 4 pages + common.js (embedded)
 │   ├── ClipCorn/                         everything that knows the jClipCorn format
 │   │   ├── CcFiles.cs                    file and lock names below the configured directory
 │   │   ├── CcLockProbe.cs                lock parsing and held/stale rule
 │   │   ├── CcSnapshot.cs                 stable local copy of both DB files
 │   │   ├── CcReader.cs                   snapshot → CcLibrary
+│   │   ├── CcSqlite.cs                   snapshot connections, header change counter
+│   │   ├── CcProbe.cs                    "Test ClipCorn access"
 │   │   ├── CcSchema.cs                   supported versions, DUUID pairing
 │   │   ├── CcWriter.cs                   pending updates → ClipCornUserData.db
 │   │   ├── CcBackups.cs                  rotating user-data backups
@@ -117,7 +120,7 @@ jellyfin-sync/
 │   └── Api/
 │       ├── CcSyncController.cs
 │       └── Responses.cs
-└── Jellyfin.Plugin.CcSync.Tests/         xUnit; pure logic + fixture databases
+└── Jellyfin.Plugin.CcSync.Tests/         xUnit v3; pure logic + fixture databases (Fixtures/v38, see its README)
 ```
 
 The pure layer (`ClipCorn/Model`, `Sync/Matcher|DesiredStateBuilder|SyncPlanner|TagSlug`) uses
@@ -366,6 +369,8 @@ Each phase ends with `make build` + `make test` green and a commit.
   10.0.12 (not the `Microsoft.Data.Sqlite` meta package); the plugin references exactly that,
   compile-only, and the publish output holds only `Jellyfin.Plugin.CcSync.dll` (+ pdb/deps.json,
   not packaged). `scripts/package.py` refuses a publish folder with any other dll or native lib.
+  **Runtime verified (phase 3):** in the 12.3 container the probe opens snapshot copies
+  (`file:…?immutable=1`, `Pooling=False`) through the server's SQLite; nothing else is loaded.
 - SQLite writes over the actual mount (cifs without `nobrl`, or NFSv4): run the writer once
   against the real share with jClipCorn closed and re-open in jClipCorn.
 - Jellyfin's NFO parser only imports `<playcount>`/`<lastplayed>` when an NFO user is configured

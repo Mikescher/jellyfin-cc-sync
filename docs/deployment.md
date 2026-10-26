@@ -99,7 +99,8 @@ Dashboard → Plugins → jellyfin-cc-sync → Settings → **Test ClipCorn acce
 - directory is writable (creates and deletes `.jellyfin-cc-sync-probe`),
 - lock state (who holds it, heartbeat age),
 - schema versions and DUUID pairing,
-- element counts read from a snapshot.
+- element counts read from a snapshot, and elements whose JSON columns do not parse,
+- the configured jClipCorn time zone resolves.
 
 An unmounted share usually shows up as "directory exists but is empty".
 

@@ -185,7 +185,10 @@ the next CC → JF sync.
 
 - The CC read is all-or-nothing: snapshot stability checks, versions, DUUID and
   `PRAGMA quick_check` must pass and every table must be read to the end, otherwise the run
-  aborts without touching Jellyfin. A single unparseable JSON column (history, groups, refs)
+  aborts without touching Jellyfin. A copy counts as stable when no `-journal`/`-wal` file
+  existed before or after it and every source kept its size, mtime and SQLite header "file
+  change counter" (offset 24, incremented by every commit in rollback-journal mode) while it was
+  copied; three attempts 2 s apart, then the run aborts. A single unparseable JSON column (history, groups, refs)
   only skips that element and is reported.
 - A CC library without any movie and episode aborts the run.
 - Change guard: a run that would change more than `MaxChangesPerRun` items (default 100) or

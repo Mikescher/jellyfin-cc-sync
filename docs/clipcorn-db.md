@@ -46,7 +46,8 @@ schema version needs a plugin update, which is checked against
 - Name: DB file path + `.~lock` (`ClipCornDB.db.~lock`, `ClipCornHistory.db.~lock`). There is
   no lock for `ClipCornUserData.db`; the main lock covers it.
 - No OS-level locking: existence plus content.
-- Content (UTF-8, no BOM), `c` = acquired, `u` = last heartbeat, both UTC ISO-8601 to seconds:
+- Content (UTF-8, no BOM), `c` = acquired, `u` = last heartbeat, both `Instant.toString()` of a
+  value truncated to seconds (`2026-10-26T18:00:00Z`), `pid` a JSON number:
   ```json
   {"pid": 1234, "c": "2026-10-26T18:00:00Z", "u": "2026-10-26T19:00:00Z", "host": "DESKTOP-X"}
   ```
@@ -147,7 +148,8 @@ Example: `["UNSPECIFIED","UNSPECIFIED","2016-11-27 16:48:30","2023-11-05 11:00:0
   versa). Multiple `UNSPECIFIED` entries are allowed.
 - **One unparseable entry makes jClipCorn read the whole list as empty**
   (`CCDateTimeList.fromJSONArray`, committed state `826b2511`), and its next save writes `[]`.
-  An uncommitted change in the jClipCorn working copy (2026-10-26) makes `fromJSONArray` throw
+  An uncommitted change in the jClipCorn working copy (2026-10-26) makes `fromJSONArray` of every
+  JSON list column (history, tags, groups including invalid group names, online refs, …) throw
   instead; either way a bad list is fatal to the history. The plugin's writer must produce only
   `yyyy-MM-dd HH:mm:ss` entries, keep existing entries verbatim, and refuse to touch a row whose
   existing list it cannot parse completely.
@@ -221,7 +223,10 @@ On MOVIES, SERIES, SEASONS, EPISODES (`columnTypes/CCUserScore.java:13-20`). The
 When `userdata.INFO.HISTORY_ENABLED = '1'`, both files contain `JCCTRIGGER_AUTOHISTORY_*`
 triggers (`history/CCDatabaseHistory.java`). They are plain SQL stored in the files and fire
 for any client, so the plugin's writes to `ClipCornUserData.db` are logged into
-`userdata.HISTORY` automatically; jClipCorn moves them to `ClipCornHistory.db` on its next start.
+`userdata.HISTORY` automatically. jClipCorn drains the staging rows into `ClipCornHistory.db`
+15 s after it started, whenever its history view is opened, and at shutdown
+(`CCDatabase.syncHistoryToHistoryDb`), so rows the plugin causes wait until the next jClipCorn
+start. Verified with the fixture: after a clean shutdown `userdata.HISTORY` is empty.
 Inserts/deletes of user rows are logged as `UPDATE` with the default as old/new value. Never
 modify or drop the triggers; jClipCorn compares their SQL text.
 

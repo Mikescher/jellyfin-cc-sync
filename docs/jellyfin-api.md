@@ -134,7 +134,12 @@ new TaskTriggerInfo { Type = TaskTriggerInfoType.IntervalTrigger, IntervalTicks 
 - The Jellyfin packages carry a framework reference to `Microsoft.AspNetCore.App`. The test
   project sets `DisableTransitiveFrameworkReferences` so it runs on the plain .NET runtime;
   tests must not touch Jellyfin types that need ASP.NET Core.
-- `Mode=ReadOnly` → `SQLITE_OPEN_READONLY`; a `Data Source=file:…?immutable=1` URI is honoured.
+- `Mode=ReadOnly` → `SQLITE_OPEN_READONLY`; a `Data Source=file:…?immutable=1` URI is honoured
+  (build it with `new Uri(path).AbsoluteUri` so spaces and `%` are escaped). Verified in the
+  `jellyfin/jellyfin:12.3` container: the plugin reads snapshots through the server's
+  `Microsoft.Data.Sqlite` without shipping any SQLite assembly.
+- The official image has tzdata: IANA ids such as `Europe/Berlin` resolve with
+  `TimeZoneInfo.FindSystemTimeZoneById`.
   `immutable=1` only on private snapshots, never on the live share.
 - Pooling is on by default and keeps file handles open after `Close()`. Use `Pooling=False` for
   every connection to jClipCorn files and snapshot files.

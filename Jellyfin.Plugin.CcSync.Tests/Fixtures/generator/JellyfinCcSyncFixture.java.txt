@@ -1,0 +1,67 @@
+package de.jClipCorn.test;
+
+import de.jClipCorn.database.CCMovieList;
+import de.jClipCorn.database.databaseElement.CCEpisode;
+import de.jClipCorn.database.databaseElement.columnTypes.*;
+import de.jClipCorn.properties.enumerations.CCDatabaseDriver;
+import de.jClipCorn.features.log.CCLog;
+import de.jClipCorn.features.serialization.ExportHelper;
+import de.jClipCorn.util.filesystem.FSPath;
+import de.jClipCorn.util.filesystem.SimpleFileUtils;
+import org.junit.Test;
+
+/**
+ * Throwaway generator for the jellyfin-cc-sync test fixtures. Not to be committed.
+ */
+@SuppressWarnings("nls")
+public class TmpJellyfinCcSyncFixture extends ClipCornBaseTest {
+
+	private static final String OUT = "/home/mike/Code/private/ClipCorn/jellyfin-cc-sync/artifacts/fixture-gen";
+
+	@Test
+	public void generate() throws Exception {
+		var dir = FSPath.create(OUT);
+		dir.mkdirsWithException();
+
+		var ml = CCMovieList.connectAndLoadDirect(CCDatabaseDriver.SQLITE, dir, "ClipCornDB", false, true);
+		applyTestPathSyntax(ml.ccprops());
+
+		var backup = SimpleFileUtils.getSystemTempFile("jxmlbkp");
+		SimpleFileUtils.writeTextResource(backup, "/example_data_full.jxmlbkp", ClipCornBaseTest.class);
+		CCLog.disableChangeEvents();
+		ExportHelper.restoreDatabaseFromBackup(backup, ml);
+		CCLog.reenableChangeEvents();
+		backup.deleteWithException();
+
+		ml.getHistory().enableTrigger();
+
+		// group hierarchy: Tarantino below Kino
+		ml.addGroup(CCGroup.create("Kino"));
+		var tarantino = ml.getGroupOrNull("Tarantino");
+		ml.updateGroup(tarantino, CCGroup.create("Tarantino", tarantino.Order, tarantino.HexColor, tarantino.DoSerialize, "Kino", tarantino.Visible));
+
+		// a movie on the watch-later list
+		movieByTitle(ml, "Die Gefährten").Tags.set(CCSingleTag.TAG_WATCH_LATER, true);
+
+		// secondary references and an imdb id
+		movieByTitle(ml, "Forrest Gump").OnlineReference.set(CCOnlineReferenceList.fromJSONArray(
+				"[{\"t\":\"tmdb\",\"id\":\"movie/13\"},{\"t\":\"imdb\",\"id\":\"tt0109830\"},{\"t\":\"imdb\",\"id\":\"tt0000001\",\"d\":\"Bonus\"}]"));
+
+		// a timed viewing
+		movieByTitle(ml, "Super 8").ViewedHistory.set(CCDateTimeList.fromJSONArray("[\"2023-11-05 11:00:00\"]"));
+
+		// series side: watch later on series + first episode, scores on season and episode
+		var series = seriesByTitle(ml, "Steins;Gate");
+		series.Tags.set(CCSingleTag.TAG_WATCH_LATER, true);
+		var season = series.getSeasonByArrayIndex(0);
+		season.Score.set(CCUserScore.RATING_IV);
+		CCEpisode first = season.getEpisodeByArrayIndex(0);
+		first.Tags.set(CCSingleTag.TAG_WATCH_LATER, true);
+		first.ViewedHistory.set(CCDateTimeList.createEmpty());
+		CCEpisode second = season.getEpisodeByArrayIndex(1);
+		second.Score.set(CCUserScore.RATING_V);
+		second.ViewedHistory.set(CCDateTimeList.fromJSONArray("[\"2016-06-12\",\"2016-07-09 20:15:00\"]"));
+
+		ml.shutdown();
+	}
+}

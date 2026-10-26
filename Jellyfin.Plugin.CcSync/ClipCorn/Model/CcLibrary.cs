@@ -52,6 +52,9 @@ public sealed class CcLibrary
 
     public IReadOnlyList<CcGroup> Groups { get; }
 
+    /// <summary>Gets the number of user-data rows without a main-DB element; jClipCorn ignores them too.</summary>
+    public int OrphanUserRows { get; init; }
+
     public IEnumerable<CcElement> Elements => _byId.Values;
 
     public IEnumerable<CcElement> Problems => _byId.Values.Where(e => e.Problem is not null);

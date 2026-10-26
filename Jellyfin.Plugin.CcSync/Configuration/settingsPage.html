@@ -4,6 +4,41 @@
         <div class="content-primary">
             <form id="ccSyncSettingsForm">
 
+                <div class="verticalSection">
+                    <h2 class="sectionTitle">jClipCorn</h2>
+
+                    <div class="inputContainer">
+                        <input is="emby-input" type="text" id="ClipCornDirectory" label="ClipCorn directory" />
+                        <div class="fieldDescription">Path of the <code>ClipCornDB</code> folder as Jellyfin sees it, e.g. <code>/clipcorn</code>. It holds <code>ClipCornDB.db</code> and <code>ClipCornUserData.db</code> and must be writable.</div>
+                    </div>
+
+                    <div class="inputContainer">
+                        <input is="emby-input" type="text" id="ClipCornTimeZone" label="jClipCorn time zone" />
+                        <div class="fieldDescription">IANA zone of the local timestamps jClipCorn stores, e.g. <code>Europe/Berlin</code>.</div>
+                    </div>
+
+                    <div class="inputContainer">
+                        <input is="emby-input" type="time" id="DateOnlyTimeOfDay" label="Time for date-only entries" />
+                        <div class="fieldDescription">Viewed-history entries without a time count as watched at this local time.</div>
+                    </div>
+
+                    <div class="inputContainer">
+                        <input is="emby-input" type="number" id="LockStaleMinutes" label="Lock counts as stale after (minutes)" min="1" step="1" />
+                        <div class="fieldDescription">A running jClipCorn refreshes its lock every 60 minutes; jClipCorn itself treats a lock older than 180 minutes as left behind by a crash.</div>
+                    </div>
+
+                    <div class="inputContainer">
+                        <input is="emby-input" type="number" id="BackupCount" label="User-data backups kept" min="1" step="1" />
+                        <div class="fieldDescription">A copy of <code>ClipCornUserData.db</code> is taken before every write.</div>
+                    </div>
+
+                    <button is="emby-button" type="button" id="ccSyncProbe" class="raised block">
+                        <span>Test ClipCorn access</span>
+                    </button>
+                    <div class="fieldDescription">Uses the values in this form, saved or not. Reads a snapshot copy and creates and deletes one probe file in the directory.</div>
+                    <div id="ccSyncProbeResult" style="margin: 1em 0;"></div>
+                </div>
+
                 <div>
                     <button is="emby-button" type="submit" class="raised button-submit block">
                         <span>Save</span>

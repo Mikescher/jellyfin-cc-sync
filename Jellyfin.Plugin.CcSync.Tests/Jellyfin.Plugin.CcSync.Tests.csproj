@@ -27,7 +27,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="Fixtures\**" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Fixtures\v38\*.db" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
