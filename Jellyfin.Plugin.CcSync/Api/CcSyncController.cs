@@ -1,6 +1,7 @@
 using System.Net.Mime;
 using Jellyfin.Plugin.CcSync.ClipCorn;
 using Jellyfin.Plugin.CcSync.Configuration;
+using Jellyfin.Plugin.CcSync.State;
 using MediaBrowser.Common.Api;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -21,10 +22,12 @@ namespace Jellyfin.Plugin.CcSync.Api;
 public class CcSyncController : ControllerBase
 {
     private readonly CcProbe _probe;
+    private readonly HistoryStore _history;
 
-    public CcSyncController(CcProbe probe)
+    public CcSyncController(CcProbe probe, HistoryStore history)
     {
         _probe = probe;
+        _history = history;
     }
 
     private static PluginConfiguration Config => Plugin.Instance?.Configuration ?? new PluginConfiguration();
@@ -38,5 +41,28 @@ public class CcSyncController : ControllerBase
             request?.LockStaleMinutes ?? config.LockStaleMinutes,
             request?.TimeZone ?? config.ClipCornTimeZone,
             cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>Paged history, newest first. <paramref name="kind"/> ending in <c>*</c> matches a prefix.</summary>
+    [HttpGet("History")]
+    public ActionResult<HistoryPage> GetHistory(
+        [FromQuery] string? kind,
+        [FromQuery] string? search,
+        [FromQuery] string? runId,
+        [FromQuery] DateTime? from,
+        [FromQuery] DateTime? to,
+        [FromQuery] int? limit,
+        [FromQuery] int? offset)
+        => _history.Query(new HistoryQuery(kind, search, runId, from?.ToUniversalTime(), to?.ToUniversalTime(), limit ?? 100, offset ?? 0));
+
+    [HttpDelete("History")]
+    public ActionResult<DeleteResponse> PruneHistory([FromQuery] int olderThanDays)
+    {
+        if (olderThanDays < 0)
+        {
+            return BadRequest("olderThanDays must not be negative");
+        }
+
+        return new DeleteResponse { Deleted = _history.DeleteOlderThan(DateTime.UtcNow.AddDays(-olderThanDays)) };
     }
 }

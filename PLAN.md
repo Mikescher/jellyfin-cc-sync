@@ -228,6 +228,7 @@ CREATE TABLE pending (
   attempts INTEGER NOT NULL DEFAULT 0, last_attempt_utc TEXT NULL, last_error TEXT NULL,
   finished_utc TEXT NULL, cc_entry TEXT NULL);
 CREATE INDEX pending_status ON pending(status);
+CREATE INDEX pending_item ON pending(jf_item_id);
 
 CREATE TABLE history (
   id INTEGER PRIMARY KEY, ts_utc TEXT NOT NULL, run_id TEXT NULL, kind TEXT NOT NULL,
@@ -241,13 +242,19 @@ CREATE INDEX history_run ON history(run_id);
 CREATE TABLE runs (
   id TEXT PRIMARY KEY, kind TEXT NOT NULL,             -- sync|flush
   started_utc TEXT NOT NULL, finished_utc TEXT NULL,
-  outcome TEXT NOT NULL,                               -- applied|nothing-to-do|dry-run|guarded|aborted|waiting
+  outcome TEXT NOT NULL,                               -- running|applied|nothing-to-do|dry-run|guarded|aborted|waiting
   summary TEXT NOT NULL);                              -- JSON counts, abort reason
+CREATE INDEX runs_kind ON runs(kind, started_utc);
 
 CREATE TABLE kv (key TEXT PRIMARY KEY, value TEXT NOT NULL);  -- last match report, stored preview plan
 ```
 
 History kinds: `docs/sync-semantics.md` § History.
+
+Times are stored as `yyyy-MM-ddTHH:mm:ss.fffZ` text (UTC, sortable), Jellyfin item ids as `Guid`
+`N` format. Every connection is opened with `Pooling=False`; WAL lets the pages read while an
+engine writes. A run that is still `running` at startup was cut off by a server stop and is
+marked `aborted`.
 
 ## 7. HTTP API
 

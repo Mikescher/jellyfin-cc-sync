@@ -1,4 +1,5 @@
 using Jellyfin.Plugin.CcSync.ClipCorn;
+using Jellyfin.Plugin.CcSync.State;
 using MediaBrowser.Controller;
 using MediaBrowser.Controller.Plugins;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,5 +16,9 @@ public class PluginServiceRegistrator : IPluginServiceRegistrator
     {
         serviceCollection.AddSingleton<PluginPaths>();
         serviceCollection.AddSingleton<CcProbe>();
+        serviceCollection.AddSingleton<StateDb>();
+        serviceCollection.AddSingleton<PendingStore>();
+        serviceCollection.AddSingleton<HistoryStore>();
+        serviceCollection.AddSingleton<RunStore>();
     }
 }

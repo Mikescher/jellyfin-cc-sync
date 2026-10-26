@@ -27,3 +27,8 @@ public class ProbeCheck
 
     public string Message { get; set; } = string.Empty;
 }
+
+public class DeleteResponse
+{
+    public int Deleted { get; set; }
+}

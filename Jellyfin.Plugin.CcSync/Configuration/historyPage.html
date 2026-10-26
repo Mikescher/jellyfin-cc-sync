@@ -2,9 +2,65 @@
      data-controller="__plugin/CcSyncHistory.js">
     <div data-role="content">
         <div class="content-primary">
+
             <div class="verticalSection">
                 <h2 class="sectionTitle">History</h2>
+
+                <div class="selectContainer">
+                    <select is="emby-select" id="ccHistKind" label="Kind"></select>
+                </div>
+                <div class="inputContainer">
+                    <input is="emby-input" type="text" id="ccHistSearch" label="Text (item, value, detail or id)" />
+                </div>
+                <div class="inputContainer">
+                    <input is="emby-input" type="text" id="ccHistRun" label="Run id" />
+                </div>
+                <div style="display: flex; gap: 1em; flex-wrap: wrap;">
+                    <div class="inputContainer" style="flex: 1; min-width: 12em;">
+                        <input is="emby-input" type="date" id="ccHistFrom" label="From" />
+                    </div>
+                    <div class="inputContainer" style="flex: 1; min-width: 12em;">
+                        <input is="emby-input" type="date" id="ccHistTo" label="To (inclusive)" />
+                    </div>
+                </div>
+
+                <button is="emby-button" type="button" id="ccHistApply" class="raised"><span>Search</span></button>
+                <button is="emby-button" type="button" id="ccHistReset" class="raised"><span>Reset</span></button>
             </div>
+
+            <div style="display: flex; align-items: center; gap: 1em; margin: 1em 0;">
+                <button is="emby-button" type="button" id="ccHistPrev" class="raised"><span>Newer</span></button>
+                <span id="ccHistRange"></span>
+                <button is="emby-button" type="button" id="ccHistNext" class="raised"><span>Older</span></button>
+            </div>
+
+            <div style="overflow-x: auto;">
+                <table class="detailTable" style="width: 100%;">
+                    <thead>
+                        <tr>
+                            <th class="detailTableHeaderCell">Time</th>
+                            <th class="detailTableHeaderCell">Kind</th>
+                            <th class="detailTableHeaderCell">Item</th>
+                            <th class="detailTableHeaderCell">Field</th>
+                            <th class="detailTableHeaderCell">Old → new</th>
+                            <th class="detailTableHeaderCell">Detail</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ccHistRows"></tbody>
+                </table>
+            </div>
+            <p id="ccHistEmpty" class="fieldDescription hide">No entries match.</p>
+
+            <div class="verticalSection" style="margin-top: 2em;">
+                <h2 class="sectionTitle">Prune</h2>
+                <div class="inputContainer">
+                    <input is="emby-input" type="number" id="ccHistPruneDays" label="Delete entries older than (days)" min="0" step="1" value="365" />
+                    <div class="fieldDescription">Automatic pruning follows the retention setting; this deletes once, now.</div>
+                </div>
+                <button is="emby-button" type="button" id="ccHistPrune" class="raised"><span>Delete</span></button>
+                <div id="ccHistPruneResult" class="fieldDescription"></div>
+            </div>
+
         </div>
     </div>
 </div>
