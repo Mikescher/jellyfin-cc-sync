@@ -14,11 +14,12 @@ public sealed class CcSnapshot : IDisposable
     private static readonly TimeSpan DefaultRetryDelay = TimeSpan.FromSeconds(2);
     private static readonly TimeSpan LeftoverAge = TimeSpan.FromHours(6);
 
-    private CcSnapshot(string directory, string mainDb, string? userDb)
+    private CcSnapshot(string directory, string mainDb, string? userDb, string sourceStamp)
     {
         Directory = directory;
         MainDb = mainDb;
         UserDb = userDb;
+        SourceStamp = sourceStamp;
     }
 
     public string Directory { get; }
@@ -26,6 +27,12 @@ public sealed class CcSnapshot : IDisposable
     public string MainDb { get; }
 
     public string? UserDb { get; }
+
+    /// <summary>
+    /// Gets size, mtime and header change counter of every source as verified for this copy; equal
+    /// stamps mean equal content as far as SQLite's commit counter can tell.
+    /// </summary>
+    public string SourceStamp { get; }
 
     /// <summary>
     /// Copies the main DB (and the user DB) into a new folder below <paramref name="snapshotRoot"/>.
@@ -58,13 +65,15 @@ public sealed class CcSnapshot : IDisposable
                     await Task.Delay(retryDelay ?? DefaultRetryDelay, cancellationToken).ConfigureAwait(false);
                 }
 
-                lastProblem = await TryCopyAsync(files, sources, directory, cancellationToken).ConfigureAwait(false);
+                var (problem, stamps) = await TryCopyAsync(files, sources, directory, cancellationToken).ConfigureAwait(false);
+                lastProblem = problem;
                 if (lastProblem is null)
                 {
                     return new CcSnapshot(
                         directory,
                         Path.Combine(directory, CcFiles.MainDbName),
-                        includeUserData ? Path.Combine(directory, CcFiles.UserDbName) : null);
+                        includeUserData ? Path.Combine(directory, CcFiles.UserDbName) : null,
+                        string.Join('|', stamps.Select(s => string.Create(CultureInfo.InvariantCulture, $"{s.Length}:{s.Modified.Ticks}:{s.Counter}"))));
                 }
             }
         }
@@ -80,12 +89,12 @@ public sealed class CcSnapshot : IDisposable
 
     public void Dispose() => TryDelete(Directory);
 
-    private static async Task<string?> TryCopyAsync(CcFiles files, string[] sources, string directory, CancellationToken cancellationToken)
+    private static async Task<(string? Problem, List<FileStamp> Stamps)> TryCopyAsync(CcFiles files, string[] sources, string directory, CancellationToken cancellationToken)
     {
         var journals = files.ExistingJournals();
         if (journals.Count > 0)
         {
-            return $"{Path.GetFileName(journals[0])} exists, a write is in progress";
+            return ($"{Path.GetFileName(journals[0])} exists, a write is in progress", []);
         }
 
         var before = sources.Select(Stamp).ToList();
@@ -112,16 +121,16 @@ public sealed class CcSnapshot : IDisposable
             var copy = Stamp(Path.Combine(directory, Path.GetFileName(sources[i])));
             if (before[i] != after[i] || copy.Length != before[i].Length || copy.Counter != before[i].Counter)
             {
-                return $"{Path.GetFileName(sources[i])} changed while it was copied";
+                return ($"{Path.GetFileName(sources[i])} changed while it was copied", before);
             }
 
             if (before[i].Counter is null)
             {
-                return $"{Path.GetFileName(sources[i])} is not an SQLite database";
+                return ($"{Path.GetFileName(sources[i])} is not an SQLite database", before);
             }
         }
 
-        return journals.Count > 0 ? $"{Path.GetFileName(journals[0])} appeared while copying" : null;
+        return (journals.Count > 0 ? $"{Path.GetFileName(journals[0])} appeared while copying" : null, before);
     }
 
     private static FileStamp Stamp(string path)

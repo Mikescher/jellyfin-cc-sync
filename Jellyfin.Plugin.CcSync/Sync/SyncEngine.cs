@@ -75,18 +75,13 @@ public sealed class SyncEngine
 
     private static PluginConfiguration Config => Plugin.Instance?.Configuration ?? new PluginConfiguration();
 
-    /// <summary>The fingerprint of the jClipCorn files and the pending updates a plan was built from.</summary>
-    public static string Fingerprint(CcFiles files, IEnumerable<PendingUpdate> pending)
+    /// <summary>
+    /// The fingerprint of exactly the data a plan was built from: the verified stamps of the copied
+    /// jClipCorn files and the pending updates of the overlay.
+    /// </summary>
+    public static string Fingerprint(string snapshotStamp, IEnumerable<PendingUpdate> pending)
     {
-        static string Stamp(string path)
-        {
-            var info = new FileInfo(path);
-            return info.Exists
-                ? string.Create(CultureInfo.InvariantCulture, $"{info.Length}:{info.LastWriteTimeUtc.Ticks}:{CcSqlite.ReadChangeCounter(path)}")
-                : "missing";
-        }
-
-        var text = $"{Stamp(files.MainDb)}|{Stamp(files.UserDb)}|" + string.Join(',', pending.Select(p => p.Id.ToString(CultureInfo.InvariantCulture)));
+        var text = snapshotStamp + "|" + string.Join(',', pending.Select(p => p.Id.ToString(CultureInfo.InvariantCulture)));
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(text)))[..16];
     }
 
@@ -186,13 +181,14 @@ public sealed class SyncEngine
         }
 
         var files = new CcFiles(config.ClipCornDirectory);
-        var fingerprint = Fingerprint(files, _pending.GetPending());
 
         CcLibrary library;
+        string snapshotStamp;
         try
         {
             using var snapshot = await CcSnapshot.TakeAsync(files, _paths.SnapshotDirectory, true, cancellationToken).ConfigureAwait(false);
             library = CcReader.Read(snapshot.MainDb, snapshot.UserDb!, cancellationToken);
+            snapshotStamp = snapshot.SourceStamp;
         }
         catch (Exception ex) when (ex is CcSnapshotException or CcSchemaException or CcReadException or IOException or UnauthorizedAccessException)
         {
@@ -207,6 +203,7 @@ public sealed class SyncEngine
         // Taken inside the gate: no pending update can be written until this run is done.
         var t0 = DateTime.UtcNow;
         var pending = _pending.GetPending();
+        var fingerprint = Fingerprint(snapshotStamp, pending);
 
         var index = _index.Build(config);
         var match = Matcher.Match(library, index.Items);
@@ -247,6 +244,13 @@ public sealed class SyncEngine
             if (stored.Fingerprint != fingerprint)
             {
                 return Abort("jClipCorn or the pending updates changed since the preview; run a new preview");
+            }
+
+            // Jellyfin-side changes (a rescan, Identify dropping clipcorn ids) are not in the fingerprint.
+            if (plan.Changes.Count > stored.ItemsChanged || plan.Unwatches > stored.Unwatches)
+            {
+                return Abort($"the plan grew since the preview ({stored.ItemsChanged} → {plan.Changes.Count} items, "
+                    + $"{stored.Unwatches} → {plan.Unwatches} un-watched); run a new preview");
             }
         }
         else if (GuardReason(config, mode, plan) is { } reason)

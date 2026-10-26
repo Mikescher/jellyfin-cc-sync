@@ -96,7 +96,7 @@ public sealed class StatusService
 
         if (directoryExists)
         {
-            var access = CcLockProbe.ProbeDirectory(new CcFiles(config.ClipCornDirectory), TimeSpan.FromMinutes(Math.Max(1, config.LockStaleMinutes)), DateTime.UtcNow);
+            var access = CcLockProbe.ProbeDirectory(new CcFiles(config.ClipCornDirectory), ConfigValues.LockStaleAfter(config.LockStaleMinutes), DateTime.UtcNow);
             response.MainLock = access.MainLock;
             response.HistoryLock = access.HistoryLock;
             response.Journals = access.Journals.Select(Path.GetFileName).OfType<string>().ToList();

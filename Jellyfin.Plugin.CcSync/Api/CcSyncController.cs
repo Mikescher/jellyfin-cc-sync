@@ -30,6 +30,7 @@ public class CcSyncController : ControllerBase
     private readonly RunStore _runs;
     private readonly SyncEngine _sync;
     private readonly StatusService _status;
+    private readonly SyncGate _gate;
     private readonly ITaskManager _taskManager;
 
     public CcSyncController(
@@ -39,6 +40,7 @@ public class CcSyncController : ControllerBase
         RunStore runs,
         SyncEngine sync,
         StatusService status,
+        SyncGate gate,
         ITaskManager taskManager)
     {
         _probe = probe;
@@ -47,6 +49,7 @@ public class CcSyncController : ControllerBase
         _runs = runs;
         _sync = sync;
         _status = status;
+        _gate = gate;
         _taskManager = taskManager;
     }
 
@@ -139,13 +142,19 @@ public class CcSyncController : ControllerBase
             Items = _pending.List(status, Math.Clamp(limit ?? 100, 1, 1000), Math.Max(0, offset ?? 0)),
         };
 
-    /// <summary><c>failed</c> → <c>pending</c>.</summary>
+    /// <summary>
+    /// <c>failed</c> → <c>pending</c>. Waits for the gate: a sync must not plan without an update
+    /// that becomes pending while it runs.
+    /// </summary>
     [HttpPost("Pending/{id}/Retry")]
-    public ActionResult RetryPending([FromRoute] long id)
+    public async Task<ActionResult> RetryPending([FromRoute] long id, CancellationToken cancellationToken)
     {
-        if (!_pending.Retry(id))
+        using (await _gate.EnterAsync(cancellationToken).ConfigureAwait(false))
         {
-            return Conflict("Only failed updates can be retried.");
+            if (!_pending.Retry(id))
+            {
+                return Conflict("Only failed updates can be retried.");
+            }
         }
 
         RecordManual(id, HistoryKinds.PendingRetry, "retried by hand");
@@ -153,13 +162,19 @@ public class CcSyncController : ControllerBase
         return NoContent();
     }
 
-    /// <summary>A pending or failed update is discarded; it will never be written.</summary>
+    /// <summary>
+    /// A pending or failed update is discarded and never written. Waits for the gate, so a write
+    /// session that already holds the update finishes first.
+    /// </summary>
     [HttpDelete("Pending/{id}")]
-    public ActionResult DiscardPending([FromRoute] long id)
+    public async Task<ActionResult> DiscardPending([FromRoute] long id, CancellationToken cancellationToken)
     {
-        if (!_pending.Discard(id, DateTime.UtcNow))
+        using (await _gate.EnterAsync(cancellationToken).ConfigureAwait(false))
         {
-            return Conflict("Only pending or failed updates can be discarded.");
+            if (!_pending.Discard(id, DateTime.UtcNow))
+            {
+                return Conflict("Only pending or failed updates can be discarded.");
+            }
         }
 
         RecordManual(id, HistoryKinds.PendingDiscarded, "discarded by hand");

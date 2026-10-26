@@ -1,4 +1,5 @@
 using Jellyfin.Plugin.CcSync.ClipCorn;
+using Jellyfin.Plugin.CcSync.Configuration;
 using Jellyfin.Plugin.CcSync.Tests.Support;
 
 namespace Jellyfin.Plugin.CcSync.Tests.ClipCorn;
@@ -62,15 +63,17 @@ public class CcLockProbeTests
     [InlineData("garbage", CcLockFormat.Malformed)]
     [InlineData("{\"pid\": 1234, \"u\": \"yesterday\"}", CcLockFormat.Json)]
     [InlineData("", CcLockFormat.Malformed)]
-    public void WithoutAHeartbeatTheMtimeDecides(string content, CcLockFormat format)
+    public void WithoutAHeartbeatALockIsHeldWhateverItsAge(string content, CcLockFormat format)
     {
         var fresh = Eval(content, Now.AddMinutes(-10));
         Assert.Equal(format, fresh.Format);
         Assert.True(fresh.Held);
 
-        var old = Eval(content, Now.AddMinutes(-181));
-        Assert.False(old.Held);
-        Assert.True(old.Stale);
+        // Pre-heartbeat jClipCorn writes its PID once at start: an old file may be a running jClipCorn.
+        var old = Eval(content, Now.AddDays(-3));
+        Assert.True(old.Held);
+        Assert.False(old.Stale);
+        Assert.Contains("without heartbeat", old.Description, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -99,6 +102,9 @@ public class CcLockProbeTests
         Assert.True(bare.Held);
 
         File.SetLastWriteTimeUtc(fixture.Files.MainLock, DateTime.UtcNow.AddHours(-4));
+        Assert.True(CcLockProbe.Probe(fixture.Files.MainLock, stale, DateTime.UtcNow).Held);
+
+        File.WriteAllText(fixture.Files.MainLock, "{\"u\": \"2020-01-01T00:00:00Z\"}");
         Assert.False(CcLockProbe.Probe(fixture.Files.MainLock, stale, DateTime.UtcNow).Held);
     }
 
@@ -150,5 +156,15 @@ public class CcLockProbeTests
 
         File.WriteAllText(fixture.Files.MainDb + "-journal", string.Empty);
         Assert.True(CcLockProbe.ProbeDirectory(fixture.Files, Stale, DateTime.UtcNow, ownTransactionOn: fixture.Files.UserDb).Blocked);
+    }
+
+    [Theory]
+    [InlineData(1, 180)]
+    [InlineData(60, 180)]
+    [InlineData(180, 180)]
+    [InlineData(600, 600)]
+    public void TheStaleAgeIsNeverBelowJClipCornsOwn(int configured, int effective)
+    {
+        Assert.Equal(TimeSpan.FromMinutes(effective), ConfigValues.LockStaleAfter(configured));
     }
 }

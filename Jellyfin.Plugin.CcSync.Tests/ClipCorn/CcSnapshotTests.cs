@@ -71,4 +71,25 @@ public class CcSnapshotTests
         Assert.False(leftover.Exists && Directory.Exists(leftover.FullName));
         Assert.True(Directory.Exists(recent.FullName));
     }
+
+    [Fact]
+    public async Task TheSourceStampFollowsCommits()
+    {
+        using var fixture = new FixtureDirectory();
+
+        string first;
+        using (var snapshot = await CcSnapshot.TakeAsync(fixture.Files, fixture.SnapshotRoot, true, CancellationToken.None, TimeSpan.Zero))
+        {
+            first = snapshot.SourceStamp;
+        }
+
+        using (var again = await CcSnapshot.TakeAsync(fixture.Files, fixture.SnapshotRoot, true, CancellationToken.None, TimeSpan.Zero))
+        {
+            Assert.Equal(first, again.SourceStamp);
+        }
+
+        fixture.Execute(CcFiles.UserDbName, "UPDATE INFO SET IVALUE = 'someone' WHERE IKEY = 'CREATION_USERNAME'");
+        using var changed = await CcSnapshot.TakeAsync(fixture.Files, fixture.SnapshotRoot, true, CancellationToken.None, TimeSpan.Zero);
+        Assert.NotEqual(first, changed.SourceStamp);
+    }
 }

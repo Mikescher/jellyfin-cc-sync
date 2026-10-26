@@ -185,7 +185,7 @@ Singletons: `StateDb`, `PendingStore`, `HistoryStore`, `RunStore`, `SessionTrack
 | jClipCorn | `ClipCornDirectory` | `""` | Path of the `ClipCornDB` folder inside the Jellyfin process |
 | | `ClipCornTimeZone` | `Europe/Berlin` | IANA zone of jClipCorn's local timestamps |
 | | `DateOnlyTimeOfDay` | `12:00` | Time used for date-only history entries |
-| | `LockStaleMinutes` | `180` | Lock older than this (heartbeat or mtime) counts as stale |
+| | `LockStaleMinutes` | `180` | Heartbeat older than this counts as stale (minimum 180); a lock without heartbeat is always held |
 | | `BackupCount` | `20` | User-data backups kept |
 | Jellyfin | `SyncUserId` | none | The one Jellyfin user that is synced (dropdown) |
 | | `LibraryIds` | empty = all | Libraries taken into account |

@@ -131,10 +131,11 @@ public sealed class PendingStore
         return previous;
     }
 
-    public void Finish(long id, string status, DateTime nowUtc, string? ccEntry, string? error)
+    /// <summary>Ends a pending update; false when it was no longer pending.</summary>
+    public bool Finish(long id, string status, DateTime nowUtc, string? ccEntry, string? error)
     {
         using var connection = _db.Open();
-        connection.Execute(
+        return connection.Execute(
             """
             UPDATE pending SET status = $status, attempts = attempts + 1, last_attempt_utc = $now, finished_utc = $now,
                 cc_entry = COALESCE($entry, cc_entry), last_error = $error
@@ -144,7 +145,7 @@ public sealed class PendingStore
             ("$status", status),
             ("$now", StateDb.FormatTime(nowUtc)),
             ("$entry", ccEntry),
-            ("$error", error));
+            ("$error", error)) == 1;
     }
 
     /// <summary>Records a resolved jClipCorn id (fallback matching) without finishing the update.</summary>

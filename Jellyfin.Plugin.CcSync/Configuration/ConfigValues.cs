@@ -5,6 +5,15 @@ namespace Jellyfin.Plugin.CcSync.Configuration;
 /// <summary>Parsing of configuration values that are stored as text.</summary>
 public static class ConfigValues
 {
+    /// <summary>
+    /// jClipCorn refreshes its lock every 60 minutes and treats a foreign lock as stale after 180;
+    /// a shorter setting would declare a running jClipCorn dead between two refreshes.
+    /// </summary>
+    public const int MinLockStaleMinutes = 180;
+
+    public static TimeSpan LockStaleAfter(int configuredMinutes)
+        => TimeSpan.FromMinutes(Math.Max(MinLockStaleMinutes, configuredMinutes));
+
     public static bool TryResolveTimeZone(string? id, out TimeZoneInfo zone, out string? error)
     {
         zone = TimeZoneInfo.Utc;

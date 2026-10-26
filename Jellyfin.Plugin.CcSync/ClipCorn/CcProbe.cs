@@ -60,7 +60,7 @@ public sealed class CcProbe
         var userReadable = CheckReadable(files.UserDb, "User database", Add);
         CheckWritable(files, Add);
 
-        var access = CcLockProbe.ProbeDirectory(files, TimeSpan.FromMinutes(lockStaleMinutes), DateTime.UtcNow);
+        var access = CcLockProbe.ProbeDirectory(files, ConfigValues.LockStaleAfter(lockStaleMinutes), DateTime.UtcNow);
         foreach (var status in new[] { access.MainLock, access.HistoryLock })
         {
             var level = status.Present ? "warn" : "ok";

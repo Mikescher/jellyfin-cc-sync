@@ -206,9 +206,14 @@ the next CC → JF sync.
   first run after setup (no sync run with outcome `applied` yet) always hits the guard when it
   has anything to change.
 - "Apply" plans again against the current Jellyfin state and applies that plan. It is refused
-  when the stored preview was replaced or when the fingerprint of the jClipCorn files (size,
-  mtime, header change counter of both DBs) and the set of pending updates differs from the
-  preview's. It also runs with `DryRun` on, as an explicit confirmation.
+  when the stored preview was replaced, when the fingerprint differs from the preview's, or when
+  the new plan changes or un-watches more items than the preview showed (Jellyfin-side changes
+  such as a rescan or Identify are not in the fingerprint). The fingerprint is built from the
+  size, mtime and header change counter that the snapshot verified for both DB files, plus the
+  pending updates of the overlay. Apply also runs with `DryRun` on, as an explicit confirmation.
+- Retry and Discard on the Pending page wait for the gate: a write session that already holds
+  the update finishes first, and a sync never plans without an update that turns pending while
+  it runs.
 - `DryRun` computes and stores the plan, writes history entries of kind `planned-*`, applies
   nothing. The same plan again (every 30 minutes in dry-run mode) is not recorded again.
 

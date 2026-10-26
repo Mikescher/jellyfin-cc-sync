@@ -63,8 +63,16 @@ schema version needs a plugin update, which is checked against
 | Lock content | Held? |
 |---|---|
 | file absent (only "not found" counts as absent; any other IO error = held) | no |
-| JSON with `u` parseable | held while `now - u < LockStaleMinutes` (default 180) |
-| bare PID, malformed JSON, unreadable | held while file mtime is younger than `LockStaleMinutes` |
+| JSON with `u` parseable | held while `now - u < LockStaleMinutes` (default and minimum 180) |
+| bare PID, malformed JSON, JSON without readable `u`, unreadable | held, whatever its age |
+
+Why no mtime rule: jClipCorn builds from `bcfeb302` (2026-09-07, schema 38) up to `37c0e2ef`
+(2026-10-03, which added the heartbeat) write the bare PID once at start and never touch the file
+again (`FileLockManager` at `37c0e2ef~1`), so the file's age says nothing about whether that
+jClipCorn still runs. Such a lock clears when jClipCorn is closed cleanly (or a newer jClipCorn
+replaces it); a crash leftover has to be removed by starting and closing jClipCorn once, or by
+hand. `LockStaleMinutes` below 180 is raised to 180: jClipCorn refreshes every 60 minutes and
+itself waits 180 before it takes over a foreign lock.
 
 A lock that is present but stale is reported as a warning on the Status page ("jClipCorn was
 not shut down cleanly on host X"). The plugin never creates, rewrites or deletes lock files.

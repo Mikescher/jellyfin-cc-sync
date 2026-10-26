@@ -117,7 +117,9 @@ An unmounted share usually shows up as "directory exists but is empty".
 - **jClipCorn** running anywhere (its lock file is present and fresh): the plugin only reads
   snapshots and queues writes until jClipCorn is closed. A jClipCorn that crashed leaves its lock
   behind; writes resume once the heartbeat is older than `LockStaleMinutes` (180, jClipCorn's own
-  rule), or immediately after jClipCorn has been started and closed cleanly once.
+  rule), or immediately after jClipCorn has been started and closed cleanly once. A lock without
+  heartbeat (jClipCorn builds before 2026-10-03) never goes stale: start and close jClipCorn once,
+  or delete the leftover lock file by hand when no jClipCorn runs.
 - **jcc-mirror** (subscriber NAS): it replaces `ClipCornDB.db` by rename and never touches
   `ClipCornUserData.db`. The plugin reads the main DB from a snapshot and writes only user data,
   so both can run on the same folder.

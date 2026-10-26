@@ -40,6 +40,10 @@ Rules for the plugin:
   from `GetItemList` with `EnableUserData=false`: `GetUserData` then returns a blank row and
   saving it wipes favourites, resume points and counts.
 - The whole row is written (last writer wins), so re-read right before each write.
+- In 12.3 `GetUserData(user, item)` maps a fresh `UserItemData` from `item.UserData`; the cache
+  and `item.UserData` are only replaced after the commit. Reading back after an exception from
+  `SaveUserData` therefore tells a throwing `UserDataSaved` handler (values saved) from a failed
+  save (old values) (`Emby.Server.Implementations/Library/UserDataManager.cs` at `v12.3`).
 - `UserDataSaved` is invoked synchronously **without try/catch**; another plugin's throwing
   handler surfaces in our call after the data is already saved. Wrap every `SaveUserData`.
 - `Played=true` with `LastPlayedDate=null` is allowed.

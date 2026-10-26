@@ -75,7 +75,7 @@ public sealed class FlushEngine : IDisposable
         }
 
         var now = DateTime.UtcNow;
-        var staleAfter = TimeSpan.FromMinutes(Math.Max(1, config.LockStaleMinutes));
+        var staleAfter = ConfigValues.LockStaleAfter(config.LockStaleMinutes);
 
         if (!ConfigValues.TryResolveTimeZone(config.ClipCornTimeZone, out var zone, out var zoneError))
         {
@@ -121,14 +121,19 @@ public sealed class FlushEngine : IDisposable
         }
         catch (Exception ex)
         {
+            // After the commit the entries are in jClipCorn; updates still marked pending are found
+            // as duplicates by the next run.
+            var consequence = summary.Committed
+                ? "the watches were written to jClipCorn, but recording the outcome failed"
+                : "the watches stay pending";
             summary.AbortReason = ex.Message;
             summary.DurationMs = stopwatch.ElapsedMilliseconds;
-            var result = new FlushResult(RunOutcomes.Aborted, 0, 0, 0, pending.Count, ex.Message);
+            var result = new FlushResult(RunOutcomes.Aborted, 0, 0, 0, pending.Count, $"{ex.Message} ({consequence})");
             log.Add(RunEntry(run.Id, result, summary));
             _history.AddRange(log);
             _runs.Finish(run.Id, RunOutcomes.Aborted, summary, DateTime.UtcNow);
-            _logger.LogError(ex, "Flush {Run} aborted", run.Id);
-            _activity.Report("writing watches to jClipCorn failed", ex.Message + " — the watches stay pending.", LogLevel.Error);
+            _logger.LogError(ex, "Flush {Run} aborted; {Consequence}", run.Id, consequence);
+            _activity.Report("writing watches to jClipCorn failed", $"{ex.Message} — {consequence}.", LogLevel.Error);
             return result;
         }
     }
@@ -249,6 +254,7 @@ public sealed class FlushEngine : IDisposable
             });
         }
 
+        summary.Committed = true;
         foreach (var outcome in outcomes)
         {
             Record(byId[outcome.PendingId], outcome, runId, log, summary);
@@ -321,7 +327,11 @@ public sealed class FlushEngine : IDisposable
         }
 
         var status = outcome.Result == CcWriteResult.Written ? PendingStatus.Written : PendingStatus.Duplicate;
-        _pending.Finish(update.Id, status, DateTime.UtcNow, outcome.Entry, null);
+        if (!_pending.Finish(update.Id, status, DateTime.UtcNow, outcome.Entry, null))
+        {
+            // Discard and retry take the gate, so this means state.db was changed behind its back.
+            _logger.LogWarning("Pending update #{Id} was no longer pending when its write was recorded", update.Id);
+        }
 
         if (outcome.Result == CcWriteResult.Written)
         {
@@ -459,6 +469,8 @@ public sealed class FlushEngine : IDisposable
         public int Retrying { get; set; }
 
         public string? Backup { get; set; }
+
+        public bool Committed { get; set; }
 
         public long DurationMs { get; set; }
 
