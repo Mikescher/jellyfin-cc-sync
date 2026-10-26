@@ -43,8 +43,8 @@ Fallbacks, only for items without a `clipcorn` id:
 - One CC element may match several JF items (same file in two libraries): each JF item is synced
   and the duplication is reported as info.
 - Name normalisation: case-folded, diacritics removed, punctuation and whitespace collapsed. The
-  movie name used is the one jClipCorn writes as NFO `<title>` (check
-  `features/nfo/MovieNFOWriter.java` for how `NAME`, `ZYKLUS`, `ZYKLUSNUMBER` combine).
+  movie name compared is `NAME` alone: `MovieNFOWriter` writes it verbatim as `<title>` and puts
+  the zyklus only into `<originaltitle>`/`<set>`.
 - The Status page lists: unmatched CC elements, JF items without a match, ambiguous fallbacks,
   kind mismatches, fallback-matched items (a hint that their NFO is missing or outdated).
 

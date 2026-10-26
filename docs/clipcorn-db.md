@@ -146,9 +146,20 @@ Example: `["UNSPECIFIED","UNSPECIFIED","2016-11-27 16:48:30","2023-11-05 11:00:0
   an identical datetime, or any datetime on a day that already has a date-only entry (and vice
   versa). Multiple `UNSPECIFIED` entries are allowed.
 - **One unparseable entry makes jClipCorn read the whole list as empty**
-  (`CCDateTimeList.java:123-133`), and its next save writes `[]`. The plugin's writer must
-  produce only `yyyy-MM-dd HH:mm:ss` entries, keep existing entries verbatim, and refuse to
-  touch a row whose existing list it cannot parse completely.
+  (`CCDateTimeList.fromJSONArray`, committed state `826b2511`), and its next save writes `[]`.
+  An uncommitted change in the jClipCorn working copy (2026-10-26) makes `fromJSONArray` throw
+  instead; either way a bad list is fatal to the history. The plugin's writer must produce only
+  `yyyy-MM-dd HH:mm:ss` entries, keep existing entries verbatim, and refuse to touch a row whose
+  existing list it cannot parse completely.
+- jClipCorn's entry parser (`CCDateTime.createFromSQL`) checks only the length and the
+  separators, not digits or ranges (`2016-13-45` passes). The plugin's parser
+  (`CcDateTime.TryParse`) is stricter: digits, real calendar dates, `00:00:00`–`23:59:59`, and
+  `UNSPECIFIED` in exactly that spelling. Anything it rejects counts as unparseable; jClipCorn
+  never writes such entries itself.
+- `add()` re-sorts the whole list with Java's stable `Collections.sort`. For a list jClipCorn
+  wrote (already sorted) that keeps every existing entry in place and puts the new one behind all
+  entries that do not compare greater; the plugin reproduces this with a stable binary insertion
+  sort.
 - jClipCorn's own entries for "play" are the *start* of playback (`addToViewedHistoryFromUI`
   adds "now" when the player is launched).
 
@@ -199,6 +210,11 @@ On MOVIES, SERIES, SEASONS, EPISODES (`columnTypes/CCUserScore.java:13-20`). The
   `[{"t":"tmdb","id":"tv/1399"},{"t":"imdb","id":"tt0944947"}]`.
 - For matching, prefer a reference without `d` (description marks secondary references, as the
   web panel's `getFirstRef` does: `../ClipCornWebPanel/src/lib/utils/onlineref.ts:43-81`).
+- The NFO writer (`features/nfo/NFOUniqueIdWriter.java`) writes only the **first** reference per
+  provider type, in list order and regardless of `d`; Jellyfin keeps the last `<uniqueid>` per
+  type, so writing one per type is what makes the NFO's `tmdb`/`imdb` deterministic.
+- jClipCorn reads a list with an unknown type (`CCOnlineRefType.parse`) as empty; the plugin
+  keeps unknown types and only looks at `tmdb`/`imdb`.
 
 ## Change-history triggers
 
@@ -247,7 +263,7 @@ jClipCorn writes NFOs (`features/nfo/`), off by default, enabled per installatio
 
 | File | Relevant content |
 |---|---|
-| movie `<video>.nfo` | `title`, `year`, `uniqueid` (imdb, tmdb without `movie/` prefix, …, then `clipcorn`) |
+| movie `<video>.nfo` | `title` = `NAME` verbatim, `originaltitle` = zyklus + roman number (when set), `set/name` = zyklus, `year` = `MOVIEYEAR`, `uniqueid` (imdb, tmdb without `movie/` prefix, …, then `clipcorn`) |
 | `tvshow.nfo` | `title`, `year`, `uniqueid` (tmdb/imdb omitted when seasons have differing refs), `clipcorn` |
 | `season.nfo` | `seasonnumber`, `uniqueid` incl. `clipcorn` |
 | episode `<video>.nfo` | `season`, `episode`, only the `clipcorn` uniqueid |

@@ -89,8 +89,9 @@ jellyfin-sync/
 │   │   ├── CcSchema.cs                   supported versions, DUUID pairing
 │   │   ├── CcWriter.cs                   pending updates → ClipCornUserData.db
 │   │   ├── CcBackups.cs                  rotating user-data backups
-│   │   └── Model/                        CcLibrary, CcMovie, CcSeries, CcSeason, CcEpisode,
-│   │                                     CcDateTime, CcViewedHistory, CcOnlineRefs, CcScore, CcTagList
+│   │   └── Model/                        CcLibrary, CcElements (movie/series/season/episode records),
+│   │                                     CcDateTime, CcViewedHistory, CcOnlineRefs, CcScore, CcTagList,
+│   │                                     CcGroupList
 │   ├── Jellyfin/
 │   │   ├── JfIndex.cs                    library query → JfItemInfo records
 │   │   └── JfApplier.cs                  user data + tag writes on GetItemById instances
@@ -356,7 +357,9 @@ Each phase ends with `make build` + `make test` green and a commit.
 - Jellyfin's season NFO parser stores `<uniqueid type="clipcorn">` on Season items (expected,
   `SeasonNfoParser` derives from `BaseNfoParser`; confirm on a real library).
 - How jClipCorn composes the movie NFO `<title>` from `NAME`/`ZYKLUS`/`ZYKLUSNUMBER` (needed for
-  the name fallback).
+  the name fallback). **Verified (phase 2):** `<title>` is `NAME` verbatim
+  (`MovieNFOWriter.java:39`); `ZYKLUS` + roman `ZYKLUSNUMBER` go to `<originaltitle>`, `ZYKLUS` to
+  `<set><name>`. The name fallback compares `NAME`.
 - `Microsoft.Data.Sqlite` compile-only reference: confirm no SQLite assemblies or native libs in
   the publish output and that the server's 10.0.12 copy is used at runtime.
   **Publish output verified (phase 1):** the 12.3 server ships `Microsoft.Data.Sqlite.Core`
