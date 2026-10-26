@@ -39,6 +39,52 @@
                     <div id="ccSyncProbeResult" style="margin: 1em 0;"></div>
                 </div>
 
+                <div class="verticalSection">
+                    <h2 class="sectionTitle">Jellyfin</h2>
+
+                    <div class="selectContainer">
+                        <select is="emby-select" id="SyncUserId" label="Sync user"></select>
+                        <div class="fieldDescription">The one Jellyfin user whose watch state and favourites mirror jClipCorn and whose watches are written back.</div>
+                    </div>
+
+                    <div class="fieldDescription" style="margin-bottom: .5em;">Libraries taken into account (none checked = all):</div>
+                    <div id="ccSyncLibraries" class="checkboxList" style="margin-bottom: 1em;"></div>
+                </div>
+
+                <div class="verticalSection">
+                    <h2 class="sectionTitle">Write-back</h2>
+
+                    <label class="checkboxContainer">
+                        <input is="emby-checkbox" type="checkbox" id="WriteBackEnabled" />
+                        <span>Queue watches of the sync user for jClipCorn</span>
+                    </label>
+
+                    <div class="inputContainer">
+                        <input is="emby-input" type="number" id="WatchedThreshold" label="Watched threshold" min="0" max="1" step="0.01" />
+                        <div class="fieldDescription">Played fraction that counts as watched when the client does not report completion.</div>
+                    </div>
+
+                    <div class="inputContainer">
+                        <input is="emby-input" type="number" id="DedupMinutes" label="Dedup window (minutes)" min="0" step="1" />
+                        <div class="fieldDescription">A second watch of the same item within this window is ignored.</div>
+                    </div>
+
+                    <div class="inputContainer">
+                        <input is="emby-input" type="number" id="StartCoalesceMinutes" label="Start coalesce window (minutes)" min="0" step="1" />
+                        <div class="fieldDescription">Pauses and seeks shorter than this keep the original start time, which becomes the jClipCorn entry.</div>
+                    </div>
+
+                    <label class="checkboxContainer">
+                        <input is="emby-checkbox" type="checkbox" id="ManualMarkCreatesPending" />
+                        <span>"Mark played" in Jellyfin also queues a watch (timestamp: now)</span>
+                    </label>
+
+                    <label class="checkboxContainer">
+                        <input is="emby-checkbox" type="checkbox" id="ResetWatchLaterOnWatch" />
+                        <span>Remove jClipCorn's "Watch later" tag when a watch is written (episode: also from its series)</span>
+                    </label>
+                </div>
+
                 <div>
                     <button is="emby-button" type="submit" class="raised button-submit block">
                         <span>Save</span>

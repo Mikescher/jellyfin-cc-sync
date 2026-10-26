@@ -1,3 +1,5 @@
+using Jellyfin.Plugin.CcSync.State;
+
 namespace Jellyfin.Plugin.CcSync.Api;
 
 /// <summary>Values to probe with; anything left out comes from the saved configuration.</summary>
@@ -31,4 +33,13 @@ public class ProbeCheck
 public class DeleteResponse
 {
     public int Deleted { get; set; }
+}
+
+public class PendingResponse
+{
+    public int Total { get; set; }
+
+    public IReadOnlyDictionary<string, int> Counts { get; set; } = new Dictionary<string, int>();
+
+    public IReadOnlyList<PendingUpdate> Items { get; set; } = [];
 }

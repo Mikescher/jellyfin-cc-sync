@@ -365,7 +365,9 @@ Each phase ends with `make build` + `make test` green and a commit.
 ## 12. To verify during implementation
 
 - Jellyfin's season NFO parser stores `<uniqueid type="clipcorn">` on Season items (expected,
-  `SeasonNfoParser` derives from `BaseNfoParser`; confirm on a real library).
+  `SeasonNfoParser` derives from `BaseNfoParser`; confirm on a real library). **Verified
+  (phase 5)** in the 12.3 container with an NFO-only test library: Series, Season and Episode
+  items carry `ProviderIds["clipcorn"]` from `tvshow.nfo`, `season.nfo` and the episode NFO.
 - How jClipCorn composes the movie NFO `<title>` from `NAME`/`ZYKLUS`/`ZYKLUSNUMBER` (needed for
   the name fallback). **Verified (phase 2):** `<title>` is `NAME` verbatim
   (`MovieNFOWriter.java:39`); `ZYKLUS` + roman `ZYKLUSNUMBER` go to `<originaltitle>`, `ZYKLUS` to

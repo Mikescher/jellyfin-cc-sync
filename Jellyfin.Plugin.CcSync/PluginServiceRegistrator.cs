@@ -1,5 +1,6 @@
 using Jellyfin.Plugin.CcSync.ClipCorn;
 using Jellyfin.Plugin.CcSync.State;
+using Jellyfin.Plugin.CcSync.Watch;
 using MediaBrowser.Controller;
 using MediaBrowser.Controller.Plugins;
 using Microsoft.Extensions.DependencyInjection;
@@ -20,5 +21,7 @@ public class PluginServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.AddSingleton<PendingStore>();
         serviceCollection.AddSingleton<HistoryStore>();
         serviceCollection.AddSingleton<RunStore>();
+        serviceCollection.AddSingleton<SessionTracker>();
+        serviceCollection.AddHostedService<WatchEntryPoint>();
     }
 }

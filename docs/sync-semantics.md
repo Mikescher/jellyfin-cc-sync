@@ -119,6 +119,9 @@ Unmatched items keep their user data (played, favourite) unchanged.
 Same rules as jellyfin-watchnotify, restricted to the sync user and to movies/episodes:
 
 - `PlaybackStopped` with `PlayedToCompletion` or `position / runtime >= WatchedThreshold` (0.90).
+  Jellyfin sets `PlayedToCompletion` on every stop of an item shorter than the server's minimum
+  resume duration (Dashboard → Playback → Resume, default 300 s), so such items count as watched
+  whenever they are stopped (seen with 60 s test clips).
 - `UserDataSaved` with `PlaybackFinished` and `Played=true`, delayed 10 s, as fallback for
   clients that under-report the stop.
 - `UserDataSaved` with `TogglePlayed` and `Played=true` only if `ManualMarkCreatesPending`

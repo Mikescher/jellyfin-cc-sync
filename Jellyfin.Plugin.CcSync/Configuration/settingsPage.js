@@ -2,6 +2,28 @@ import { pluginId, escapeHtml, numberOr, setupTabs } from './configurationpage?n
 
 const levelColors = { ok: '#52b54b', warn: '#e5a00d', error: '#cc3333' };
 
+// Jellyfin renders ids with or without dashes depending on the endpoint.
+function normalizeId(id) {
+    return String(id || '').replace(/-/g, '').toLowerCase();
+}
+
+function renderUsers(select, users, selected) {
+    select.innerHTML = '<option value="">— none —</option>' + users.map((u) =>
+        '<option value="' + escapeHtml(u.Id) + '">' + escapeHtml(u.Name) + '</option>').join('');
+    const match = users.find((u) => normalizeId(u.Id) === normalizeId(selected));
+    select.value = match ? match.Id : '';
+}
+
+function renderLibraries(container, libraries, selected) {
+    const chosen = new Set((selected || []).map(normalizeId));
+    container.innerHTML = libraries.map((lib) =>
+        '<label class="checkboxContainer">'
+        + '<input is="emby-checkbox" type="checkbox" class="ccSyncLibrary" data-id="' + escapeHtml(lib.ItemId) + '"'
+        + (chosen.has(normalizeId(lib.ItemId)) ? ' checked' : '') + ' />'
+        + '<span>' + escapeHtml(lib.Name) + ' <span class="fieldDescription">(' + escapeHtml(lib.CollectionType || 'mixed') + ')</span></span>'
+        + '</label>').join('');
+}
+
 export default function (view) {
     const form = view.querySelector('#ccSyncSettingsForm');
     const probeResult = view.querySelector('#ccSyncProbeResult');
@@ -9,12 +31,26 @@ export default function (view) {
 
     function load() {
         Dashboard.showLoadingMsg();
-        ApiClient.getPluginConfiguration(pluginId).then((config) => {
+        Promise.all([
+            ApiClient.getPluginConfiguration(pluginId),
+            ApiClient.getUsers(),
+            ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('Library/VirtualFolders'), dataType: 'json' })
+        ]).then(([config, users, libraries]) => {
             field('ClipCornDirectory').value = config.ClipCornDirectory || '';
             field('ClipCornTimeZone').value = config.ClipCornTimeZone || '';
             field('DateOnlyTimeOfDay').value = config.DateOnlyTimeOfDay || '12:00';
             field('LockStaleMinutes').value = config.LockStaleMinutes;
             field('BackupCount').value = config.BackupCount;
+
+            renderUsers(field('SyncUserId'), users, config.SyncUserId);
+            renderLibraries(view.querySelector('#ccSyncLibraries'), libraries || [], config.LibraryIds);
+
+            field('WriteBackEnabled').checked = config.WriteBackEnabled;
+            field('WatchedThreshold').value = config.WatchedThreshold;
+            field('DedupMinutes').value = config.DedupMinutes;
+            field('StartCoalesceMinutes').value = config.StartCoalesceMinutes;
+            field('ManualMarkCreatesPending').checked = config.ManualMarkCreatesPending;
+            field('ResetWatchLaterOnWatch').checked = config.ResetWatchLaterOnWatch;
             Dashboard.hideLoadingMsg();
         }).catch((err) => {
             console.error('[CcSync] could not load the configuration', err);
@@ -30,6 +66,18 @@ export default function (view) {
             config.DateOnlyTimeOfDay = field('DateOnlyTimeOfDay').value || '12:00';
             config.LockStaleMinutes = numberOr(field('LockStaleMinutes'), 180);
             config.BackupCount = numberOr(field('BackupCount'), 20);
+
+            config.SyncUserId = field('SyncUserId').value;
+            config.LibraryIds = Array.from(view.querySelectorAll('.ccSyncLibrary'))
+                .filter((el) => el.checked)
+                .map((el) => el.getAttribute('data-id'));
+
+            config.WriteBackEnabled = field('WriteBackEnabled').checked;
+            config.WatchedThreshold = numberOr(field('WatchedThreshold'), 0.9);
+            config.DedupMinutes = numberOr(field('DedupMinutes'), 60);
+            config.StartCoalesceMinutes = numberOr(field('StartCoalesceMinutes'), 10);
+            config.ManualMarkCreatesPending = field('ManualMarkCreatesPending').checked;
+            config.ResetWatchLaterOnWatch = field('ResetWatchLaterOnWatch').checked;
 
             ApiClient.updatePluginConfiguration(pluginId, config).then((result) => {
                 Dashboard.processPluginConfigurationUpdateResult(result);

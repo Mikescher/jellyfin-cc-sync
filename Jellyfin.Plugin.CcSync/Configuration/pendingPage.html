@@ -2,9 +2,51 @@
      data-controller="__plugin/CcSyncPending.js">
     <div data-role="content">
         <div class="content-primary">
+
             <div class="verticalSection">
-                <h2 class="sectionTitle">Pending</h2>
+                <h2 class="sectionTitle">Pending updates</h2>
+                <p class="fieldDescription">Watches of the sync user waiting to be written into jClipCorn's viewed history, and what became of them.</p>
+
+                <div class="selectContainer">
+                    <select is="emby-select" id="ccPendStatus" label="Status">
+                        <option value="">All</option>
+                        <option value="pending">pending</option>
+                        <option value="written">written</option>
+                        <option value="duplicate">duplicate</option>
+                        <option value="failed">failed</option>
+                        <option value="discarded">discarded</option>
+                    </select>
+                </div>
+                <div id="ccPendCounts" class="fieldDescription"></div>
+                <button is="emby-button" type="button" id="ccPendRefresh" class="raised"><span>Refresh</span></button>
             </div>
+
+            <div style="display: flex; align-items: center; gap: 1em; margin: 1em 0;">
+                <button is="emby-button" type="button" id="ccPendPrev" class="raised"><span>Newer</span></button>
+                <span id="ccPendRange"></span>
+                <button is="emby-button" type="button" id="ccPendNext" class="raised"><span>Older</span></button>
+            </div>
+
+            <div style="overflow-x: auto;">
+                <table class="detailTable" style="width: 100%;">
+                    <thead>
+                        <tr>
+                            <th class="detailTableHeaderCell">#</th>
+                            <th class="detailTableHeaderCell">Created</th>
+                            <th class="detailTableHeaderCell">Item</th>
+                            <th class="detailTableHeaderCell">Watched at</th>
+                            <th class="detailTableHeaderCell">Source</th>
+                            <th class="detailTableHeaderCell">Status</th>
+                            <th class="detailTableHeaderCell">Attempts</th>
+                            <th class="detailTableHeaderCell">Last error / entry</th>
+                            <th class="detailTableHeaderCell"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="ccPendRows"></tbody>
+                </table>
+            </div>
+            <p id="ccPendEmpty" class="fieldDescription hide">Nothing here.</p>
+
         </div>
     </div>
 </div>
