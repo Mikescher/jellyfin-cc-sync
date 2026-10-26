@@ -340,6 +340,17 @@ library with jClipCorn NFOs): first run hits the guard → preview → apply; wa
 pending → written while jClipCorn is "closed"; fake a fresh lock file → write waits; Identify an
 item → fallback match; replace-all refresh → tags restored on next run.
 
+**Done with the fixture copy (phases 5–7)** in a `jellyfin/jellyfin:12.3` container with an
+NFO-only library of 60 s test clips (5 movies, 1 series, 1 season, 2 episodes): first run →
+`guarded` → preview → apply (8 items) → next run `nothing-to-do`; watches of a movie and an
+episode → pending → written 15 s later (start time, local zone) → next sync moves
+`LastPlayedDate` to the start time once; fresh fake lock → write waits, `cc-locked` once →
+lock removed → written, "Watch later" cleared; replace-all refresh drops `jcc-*` tags → next
+sync restores them; a movie without `clipcorn` id matched via TMDB. Identify itself was not run
+(no internet metadata providers in the test setup); its effect — the `clipcorn` id gone — is the
+fallback path above. **Still open:** the same run against a copy of the real `ClipCornDB` folder
+and one write over the real share (needs the user).
+
 ## 11. Implementation phases
 
 Each phase ends with `make build` + `make test` green and a commit.

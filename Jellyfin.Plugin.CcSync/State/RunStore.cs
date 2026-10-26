@@ -100,6 +100,14 @@ public sealed class RunStore
 
     public void SetJson<T>(string key, T value) => SetValue(key, JsonSerializer.Serialize(value, JsonOptions));
 
+    public int DeleteFinishedBefore(DateTime cutoffUtc)
+    {
+        using var connection = _db.Open();
+        return connection.Execute(
+            "DELETE FROM runs WHERE outcome <> 'running' AND started_utc < $cutoff",
+            ("$cutoff", StateDb.FormatTime(cutoffUtc)));
+    }
+
     /// <summary>Marks runs left as running by a server stop as aborted.</summary>
     public int AbortDangling(DateTime nowUtc)
     {

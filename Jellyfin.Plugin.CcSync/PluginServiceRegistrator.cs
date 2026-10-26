@@ -24,6 +24,7 @@ public class PluginServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.AddSingleton<PendingStore>();
         serviceCollection.AddSingleton<HistoryStore>();
         serviceCollection.AddSingleton<RunStore>();
+        serviceCollection.AddSingleton<ActivityMirror>();
         serviceCollection.AddSingleton<SessionTracker>();
         serviceCollection.AddSingleton<SyncGate>();
         serviceCollection.AddSingleton<FlushEngine>();

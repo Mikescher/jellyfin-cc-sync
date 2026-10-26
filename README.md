@@ -11,9 +11,6 @@
   written into jClipCorn's viewed history as soon as jClipCorn is not running.
 - An exhaustive history of every change, viewable on the plugin's pages.
 
-> **Status: planned.** Nothing is implemented yet; see [`PLAN.md`](PLAN.md). This README
-> describes the intended behaviour.
-
 ## Install
 
 Dashboard → Plugins → Repositories → add:
@@ -23,11 +20,16 @@ https://raw.githubusercontent.com/Mikescher/jellyfin-sync/master/manifest.json
 ```
 
 Then install **jellyfin-cc-sync** from the catalogue and restart the server. Requires Jellyfin
-12.3 or newer.
+12.3 or newer and a jClipCorn database with schema 38 (main) / 3 (user data).
 
 The jClipCorn `ClipCornDB` folder has to be visible to Jellyfin as a directory (bind mount, or a
 Docker cifs/nfs volume) and writable. The plugin does not mount shares itself. See
-[`docs/deployment.md`](docs/deployment.md) for setups and the required Jellyfin NFO setting.
+[`docs/deployment.md`](docs/deployment.md) for setups, the NFO setting to leave empty and why the
+time zone setting must match the jClipCorn machine.
+
+First steps: Settings → set the directory and the sync user → **Test ClipCorn access** → Save.
+The first sync stops before changing anything and shows its plan on the Status page; **Apply**
+confirms it.
 
 ## How it works
 
@@ -62,9 +64,10 @@ other way.
 
 A movie or episode played by the sync user to completion (or past 90 %) becomes a pending
 update carrying the playback start time. If jClipCorn is not running (no fresh
-`ClipCornDB.db.~lock`), it is written right away; otherwise a task retries every 5 minutes. Before
-each write the user-data database is backed up. Like jClipCorn itself, writing a watch removes
-the "Watch later" tag (configurable).
+`ClipCornDB.db.~lock`), it is written 15 seconds later; otherwise a task retries every 5 minutes.
+Before each write the user-data database is backed up (the last 20 copies are kept). Like
+jClipCorn itself, writing a watch removes the "Watch later" tag (configurable), for an episode
+also from its series. Only `ClipCornUserData.db` is ever written.
 
 Optionally, marking an item as played by hand also creates a pending update. Marking as
 unplayed is never written back.
@@ -75,7 +78,11 @@ unplayed is never written back.
   unknown schema version or a mismatched user-data file aborts the run without touching Jellyfin.
 - A run that would change more than 100 items, or un-watch more than 20, stops and waits for
   confirmation on the Status page, with a preview of every change. The first run always does.
+  Apply is refused when jClipCorn or the pending updates changed since the preview.
 - Dry-run mode records what would change without applying it.
+- A list in jClipCorn that does not parse completely is never rewritten; the element is skipped
+  and listed on the Status page.
+- Failures, aborts and guard stops are mirrored into Jellyfin's activity log (configurable).
 
 ## Configuration
 
@@ -103,16 +110,21 @@ and *Write pending watches to jClipCorn* (5 min) under Dashboard → Scheduled T
 - **Status** — lock state, last runs, pending count, match report, preview and *Apply* for
   guarded runs, *Run now* buttons.
 - **Pending** — queued watches with retry and discard.
-- **History** — every applied change, pending step and run summary, filterable.
+- **History** — every applied change, pending step and run summary, filterable by kind, text,
+  run and date; kept forever unless a retention is set.
 
 ## Development
 
 ```sh
-make build                                        # compile
-make test                                         # unit + fixture tests
+make build                                        # compile plugin and tests
+make test                                         # unit + fixture tests (xunit.v3, Microsoft.Testing.Platform)
 make deploy JELLYFIN_CONFIG=~/.config/jellyfin    # drop the dll into a local server
 make package                                      # artifacts/jellyfin-cc-sync_<version>.zip
 ```
+
+The tests run against a real jClipCorn database pair in
+`Jellyfin.Plugin.CcSync.Tests/Fixtures/v38/`, written by jClipCorn itself; its README says how it
+was generated.
 
 ### Logo
 

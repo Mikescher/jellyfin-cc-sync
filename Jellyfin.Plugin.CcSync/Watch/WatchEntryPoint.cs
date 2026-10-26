@@ -84,6 +84,7 @@ public sealed class WatchEntryPoint : IHostedService, IDisposable
         _sessionManager.PlaybackStopped += OnPlaybackStopped;
         _userDataManager.UserDataSaved += OnUserDataSaved;
 
+        ApplyRetention();
         _collector = Task.Run(() => CollectLoopAsync(_cts.Token), CancellationToken.None);
         return Task.CompletedTask;
     }
@@ -136,6 +137,31 @@ public sealed class WatchEntryPoint : IHostedService, IDisposable
         while (await timer.WaitForNextTickAsync(cancellationToken).ConfigureAwait(false))
         {
             _tracker.Collect(TimeSpan.FromMinutes(Config.DedupMinutes));
+            ApplyRetention();
+        }
+    }
+
+    private void ApplyRetention()
+    {
+        var days = Config.HistoryRetentionDays;
+        if (days <= 0)
+        {
+            return;
+        }
+
+        try
+        {
+            var cutoff = DateTime.UtcNow.AddDays(-days);
+            var history = _history.DeleteOlderThan(cutoff);
+            var runs = _runs.DeleteFinishedBefore(cutoff);
+            if (history + runs > 0)
+            {
+                _logger.LogInformation("History retention ({Days} days): removed {History} entries and {Runs} runs", days, history, runs);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Applying the history retention failed");
         }
     }
 

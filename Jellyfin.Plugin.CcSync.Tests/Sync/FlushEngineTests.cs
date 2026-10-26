@@ -26,7 +26,7 @@ public sealed class FlushEngineTests : IDisposable
 
     public FlushEngineTests()
     {
-        _engine = new FlushEngine(_state.Pending, _state.History, _state.Runs, _gate, new PluginPaths(Path.Combine(_fixture.SnapshotRoot, "data")), NullLogger<FlushEngine>.Instance);
+        _engine = new FlushEngine(_state.Pending, _state.History, _state.Runs, _gate, new PluginPaths(Path.Combine(_fixture.SnapshotRoot, "data")), new ActivityMirror(new NullActivityManager(), NullLogger<ActivityMirror>.Instance), NullLogger<FlushEngine>.Instance);
         _config = new PluginConfiguration { ClipCornDirectory = _fixture.Root };
     }
 

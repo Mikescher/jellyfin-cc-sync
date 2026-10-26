@@ -44,6 +44,7 @@ public sealed class SyncEngine
     private readonly JfApplier _applier;
     private readonly IUserManager _userManager;
     private readonly IUserDataManager _userDataManager;
+    private readonly ActivityMirror _activity;
     private readonly ILogger<SyncEngine> _logger;
 
     public SyncEngine(
@@ -56,6 +57,7 @@ public sealed class SyncEngine
         JfApplier applier,
         IUserManager userManager,
         IUserDataManager userDataManager,
+        ActivityMirror activity,
         ILogger<SyncEngine> logger)
     {
         _gate = gate;
@@ -67,6 +69,7 @@ public sealed class SyncEngine
         _applier = applier;
         _userManager = userManager;
         _userDataManager = userDataManager;
+        _activity = activity;
         _logger = logger;
     }
 
@@ -134,6 +137,20 @@ public sealed class SyncEngine
         _history.AddRange(log);
         _runs.Finish(run.Id, result.Outcome, summary, DateTime.UtcNow);
         _logger.LogInformation("Sync {Run} ({Mode}): {Outcome}, {Message}", run.Id, mode, result.Outcome, result.Message);
+
+        switch (result.Outcome)
+        {
+            case RunOutcomes.Aborted:
+                _activity.Report("sync from jClipCorn aborted", result.Message, LogLevel.Error);
+                break;
+            case RunOutcomes.Guarded:
+                _activity.Report("sync from jClipCorn waits for confirmation", result.Message + " — see the plugin's Status page.", LogLevel.Warning);
+                break;
+            case RunOutcomes.Applied when summary.Errors > 0:
+                _activity.Report($"sync from jClipCorn: {summary.Errors} change(s) failed", result.Message, LogLevel.Warning);
+                break;
+        }
+
         return result with { RunId = run.Id };
     }
 

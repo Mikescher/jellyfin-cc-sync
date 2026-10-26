@@ -147,6 +147,9 @@ public class StateStoreTests
         Assert.Equal(RunOutcomes.Aborted, state.Runs.Last(RunKinds.Flush)!.Outcome);
         Assert.Equal(dangling.Id, state.Runs.Recent(null, 1).Single().Id);
 
+        Assert.Equal(1, state.Runs.DeleteFinishedBefore(T0.AddMinutes(1)));
+        Assert.Single(state.Runs.Recent(null, 10));
+
         state.Runs.SetJson(RunStore.MatchReportKey, new[] { "a", "b" });
         Assert.Equal(["a", "b"], state.Runs.GetJson<string[]>(RunStore.MatchReportKey)!);
         state.Runs.SetValue(RunStore.MatchReportKey, "[]");

@@ -4,8 +4,20 @@ A Jellyfin server plugin (`net10.0`, Jellyfin 12.3.0 packages, ABI `12.3.0.0`) t
 Jellyfin user's watch state, favourites and `jcc-*` tags from a jClipCorn database and writes
 Jellyfin watches back into jClipCorn's viewed history.
 
-Status: planned, not implemented. `PLAN.md` is the build plan (decisions, layout, phases);
-`docs/` holds the verified reference material. Read the matching doc before touching a component.
+`PLAN.md` holds the decisions, layout and phases (all implemented; §12 records what was verified
+and what is still open); `docs/` holds the verified reference material. Read the matching doc
+before touching a component.
+
+## Layout
+- `ClipCorn/` knows the jClipCorn format: `Model/` (pure), `CcLockProbe`, `CcSnapshot`,
+  `CcReader`, `CcSchema`, `CcWriter` (the only code that opens a live jClipCorn file),
+  `CcBackups`, `CcProbe`.
+- `Sync/`: pure `Matcher`, `CcLookup`, `DesiredStateBuilder`, `SyncPlanner`, `TagSlug`; the
+  engines `SyncEngine` (CC → JF) and `FlushEngine` (JF → CC) share one `SyncGate`.
+- `Jellyfin/` (`JfIndex`, `JfApplier`, `JfItems`), `Watch/` (`WatchEntryPoint`,
+  `SessionTracker`), `Tasks/`, `State/` (`state.db`), `Api/` (controller, `StatusService`).
+- `Configuration/`: settings, status, pending, history pages; `common.js` is imported by the
+  others as `./configurationpage?name=CcSyncCommon.js`.
 
 ## Identity
 - Display name `jellyfin-cc-sync`, assembly/namespace `Jellyfin.Plugin.CcSync`, GUID
@@ -42,9 +54,20 @@ Status: planned, not implemented. `PLAN.md` is the build plan (decisions, layout
 - Jellyfin packages carry `ExcludeAssets=runtime`; `Microsoft.Data.Sqlite` is referenced
   compile-only and comes from the server. The publish output must be only our dll.
 - Only one page per plugin may have `EnableInMainMenu`; the rest are tabs.
+- Index queries need `DtoOptions.Fields` with `ProviderIds` (else empty) and restrict libraries
+  with `AncestorIds = [library ItemId]`; `TopParentIds` with library ids returns nothing.
+- Jellyfin's JSON responses omit null properties.
+- While the writer's transaction runs, `ClipCornUserData.db-journal` is its own: the lock probe
+  before `COMMIT` must ignore it (`ownTransactionOn`).
 
 ## Build / test
 - `make build`, `make test`, `make deploy JELLYFIN_CONFIG=…`, `make package`.
+- Tests: xunit.v3 on Microsoft.Testing.Platform (`global.json`, `dotnet test --solution`). The
+  test project sets `DisableTransitiveFrameworkReferences` so it runs without the ASP.NET Core
+  runtime; tests must not touch Jellyfin types that need it.
+- Fixture DBs (`Tests/Fixtures/v38`) come from jClipCorn itself; tests copy them to a temp dir
+  (`FixtureDirectory`) and never open the checked-in files. The generator and the jClipCorn
+  re-open check are kept as `.java.txt` in `Tests/Fixtures/generator/`.
 - `make release VERSION=x.y.z.w`, then commit the zip together with `manifest.json`.
 - Logo: `scripts/make_logo.py` (fonttools + uharfbuzz, Adwaita Sans) writes `assets/logo.svg`;
   render with `rsvg-convert -w 1600 -h 900 assets/logo.svg -o assets/logo.png`.

@@ -28,18 +28,20 @@ public sealed class FlushEngine : IDisposable
     private readonly RunStore _runs;
     private readonly SyncGate _gate;
     private readonly PluginPaths _paths;
+    private readonly ActivityMirror _activity;
     private readonly ILogger<FlushEngine> _logger;
     private readonly Lock _timerLock = new();
     private readonly CancellationTokenSource _cts = new();
     private Timer? _timer;
 
-    public FlushEngine(PendingStore pending, HistoryStore history, RunStore runs, SyncGate gate, PluginPaths paths, ILogger<FlushEngine> logger)
+    public FlushEngine(PendingStore pending, HistoryStore history, RunStore runs, SyncGate gate, PluginPaths paths, ActivityMirror activity, ILogger<FlushEngine> logger)
     {
         _pending = pending;
         _history = history;
         _runs = runs;
         _gate = gate;
         _paths = paths;
+        _activity = activity;
         _logger = logger;
     }
 
@@ -106,6 +108,15 @@ public sealed class FlushEngine : IDisposable
             _history.AddRange(log);
             _runs.Finish(run.Id, result.Outcome, summary, DateTime.UtcNow);
             _logger.LogInformation("Flush {Run}: {Outcome}, {Message}", run.Id, result.Outcome, result.Message);
+            if (result.Outcome == RunOutcomes.Aborted)
+            {
+                _activity.Report("writing watches to jClipCorn failed", result.Message + " — the watches stay pending.", LogLevel.Error);
+            }
+            else if (result.Failed > 0)
+            {
+                _activity.Report($"{result.Failed} watch(es) could not be written to jClipCorn", "See the Pending tab: " + result.Message, LogLevel.Warning);
+            }
+
             return result;
         }
         catch (Exception ex)
@@ -117,6 +128,7 @@ public sealed class FlushEngine : IDisposable
             _history.AddRange(log);
             _runs.Finish(run.Id, RunOutcomes.Aborted, summary, DateTime.UtcNow);
             _logger.LogError(ex, "Flush {Run} aborted", run.Id);
+            _activity.Report("writing watches to jClipCorn failed", ex.Message + " — the watches stay pending.", LogLevel.Error);
             return result;
         }
     }
@@ -381,6 +393,10 @@ public sealed class FlushEngine : IDisposable
         {
             _history.Add(new HistoryEntry { TsUtc = nowUtc, Kind = historyKind, Detail = "writes wait: " + reason, Success = false });
             _logger.LogInformation("Pending jClipCorn writes wait: {Reason}", reason);
+            if (!key.StartsWith("lock:", StringComparison.Ordinal))
+            {
+                _activity.Report("watches cannot be written to jClipCorn", reason, LogLevel.Warning);
+            }
         }
 
         return new FlushResult(RunOutcomes.Waiting, 0, 0, 0, 0, reason);
