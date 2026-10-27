@@ -9,6 +9,14 @@
         "imageUrl": "https://raw.githubusercontent.com/Mikescher/jellyfin-cc-sync/master/assets/logo.png",
         "versions": [
             {
+                "version": "1.0.1.0",
+                "changelog": "A brief replay of an already watched item no longer counts as a watch: the played-state fallback now needs the stopped playback to have reached the watched threshold, so pausing and finishing later, even in a new session, still counts.",
+                "targetAbi": "12.3.0.0",
+                "sourceUrl": "https://raw.githubusercontent.com/Mikescher/jellyfin-cc-sync/master/releases/jellyfin-cc-sync_1.0.1.0.zip",
+                "checksum": "e00084ca01ac4da8cd6201ee749524a8",
+                "timestamp": "2026-10-27T20:34:37Z"
+            },
+            {
                 "version": "1.0.0.0",
                 "changelog": "First release: jClipCorn \u2192 Jellyfin sync of watched state, favourites and jcc-* tags; Jellyfin watches written back into jClipCorn's viewed history; preview/apply guard, pending queue and full history.",
                 "targetAbi": "12.3.0.0",

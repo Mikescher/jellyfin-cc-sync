@@ -50,6 +50,13 @@ Rules for the plugin:
 - No batch write API; one `SaveUserData` per item (own transaction). Reads: `GetUserDataBatch`.
 - Server behaviour to keep in mind: `PlayCount` is incremented at playback **start**;
   `LastPlayedDate` is set at stop (and at start for not-yet-played items).
+- Playback start leaves `Played` alone for videos, so a replayed watched item stays
+  `Played=true` throughout. Every stop (unless reported as failed) saves with
+  `PlaybackFinished`; progress reports run the same check as the stop (`UpdatePlayState`: past
+  `MaxResumePct`, within the last second, or shorter than `MinResumeDurationSeconds`) and can
+  set `Played` before the stop arrives. While a session is not paused the server adds
+  automatic progress reports every second between the client's own
+  (`SessionManager`/`UserDataManager`/`SessionInfo` at `v12.3`).
 - No per-play history exists in core; only `PlayCount` + `LastPlayedDate`.
 
 `UserDataSaveReason`: `PlaybackStart=1, PlaybackProgress=2, PlaybackFinished=3, TogglePlayed=4,

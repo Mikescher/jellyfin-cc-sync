@@ -50,6 +50,8 @@ before touching a component.
 - `ProviderIds` of DB-loaded items is case-sensitive: `"clipcorn"`, `"Tmdb"`, `"Imdb"`.
 - Every tag starting with `jcc-` (case-insensitive) is owned by the plugin; never touch others.
 - `UserDataSaved` handlers of other plugins can throw into `SaveUserData`; wrap the call.
+- `Played` stays true while a watched item is replayed, and every stop saves
+  `PlaybackFinished`; the watch fallback must check the session's furthest position.
 - Controllers must not inject `ILogger<T>` (jellyfin#11488).
 - Jellyfin packages carry `ExcludeAssets=runtime`; `Microsoft.Data.Sqlite` is referenced
   compile-only and comes from the server. The publish output must be only our dll.

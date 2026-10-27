@@ -123,7 +123,11 @@ Same rules as jellyfin-watchnotify, restricted to the sync user and to movies/ep
   resume duration (Dashboard → Playback → Resume, default 300 s), so such items count as watched
   whenever they are stopped (seen with 60 s test clips).
 - `UserDataSaved` with `PlaybackFinished` and `Played=true`, delayed 10 s, as fallback for
-  clients that under-report the stop.
+  clients that under-report the stop, and only if the furthest position reported by the item's
+  most recently active session reaches `WatchedThreshold`. Without that check every stop of an
+  already watched item would count: Jellyfin leaves `Played=true` while it is replayed.
+- A finished watch drops every tracked session of the item, so an earlier partial session never
+  counts towards a later stop.
 - `UserDataSaved` with `TogglePlayed` and `Played=true` only if `ManualMarkCreatesPending`
   (default **off**); watched-at = now.
 - Duplicate suppression per item within `DedupMinutes` (default 60), shared by all paths.

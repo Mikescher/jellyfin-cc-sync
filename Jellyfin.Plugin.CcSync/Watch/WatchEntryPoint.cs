@@ -183,6 +183,7 @@ public sealed class WatchEntryPoint : IHostedService, IDisposable
                 syncUser,
                 e.Item.Id,
                 DateTime.UtcNow,
+                e.PlaybackPositionTicks,
                 TimeSpan.FromMinutes(Config.StartCoalesceMinutes));
         }
         catch (Exception ex)
@@ -210,12 +211,8 @@ public sealed class WatchEntryPoint : IHostedService, IDisposable
                 return;
             }
 
-            var endUtc = DateTime.UtcNow;
-            if (!_tracker.TryPopStart(SessionTracker.SessionKey(ResolveSessionId(e), e.Item.Id), out var startUtc)
-                && !_tracker.TryPopStartForItem(syncUser, e.Item.Id, out startUtc))
-            {
-                startUtc = WatchRules.EstimateStart(endUtc, e.PlaybackPositionTicks);
-            }
+            var startUtc = _tracker.EndWatch(syncUser, e.Item.Id, SessionTracker.SessionKey(ResolveSessionId(e), e.Item.Id))
+                           ?? WatchRules.EstimateStart(DateTime.UtcNow, e.PlaybackPositionTicks);
 
             Complete(config, e.Item, syncUser, startUtc, PendingSource.Playback);
         }
@@ -259,8 +256,9 @@ public sealed class WatchEntryPoint : IHostedService, IDisposable
     }
 
     /// <summary>
-    /// For clients that report a natural end of file as a stop without position or completion flag.
-    /// Runs late so a well-behaved stop event claims the watch first.
+    /// For clients that report a natural end of file as a stop without position or completion flag
+    /// (the progress reports marked the item played). Runs late so a well-behaved stop event claims
+    /// the watch first.
     /// </summary>
     private async Task RunFallbackAsync(UserDataSaveEventArgs e, CancellationToken cancellationToken)
     {
@@ -274,11 +272,20 @@ public sealed class WatchEntryPoint : IHostedService, IDisposable
                 return;
             }
 
-            var endUtc = DateTime.UtcNow;
-            if (!_tracker.TryPopStartForItem(e.UserId, e.Item.Id, out var startUtc))
+            // Jellyfin keeps Played set while an already watched item is replayed and saves
+            // PlaybackFinished on every stop, so Played alone would count any brief replay.
+            var furthest = _tracker.FurthestPosition(e.UserId, e.Item.Id);
+            if (!WatchRules.IsWatched(false, furthest, e.Item.RunTimeTicks, config.WatchedThreshold))
             {
-                startUtc = WatchRules.EstimateStart(endUtc, e.UserData?.PlaybackPositionTicks);
+                _logger.LogDebug(
+                    "Fallback watch of {Item} ignored: its playback reached only {Percent:P0}",
+                    e.Item.Name,
+                    WatchRules.Fraction(furthest, e.Item.RunTimeTicks));
+                return;
             }
+
+            var startUtc = _tracker.EndWatch(e.UserId, e.Item.Id)
+                           ?? WatchRules.EstimateStart(DateTime.UtcNow, e.UserData?.PlaybackPositionTicks);
 
             Complete(config, e.Item, e.UserId, startUtc, PendingSource.PlaybackFallback);
         }

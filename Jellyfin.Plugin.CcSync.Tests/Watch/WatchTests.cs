@@ -37,12 +37,89 @@ public class WatchTests
         var item = Guid.NewGuid();
         var start = new DateTime(2026, 10, 26, 18, 0, 0, DateTimeKind.Utc);
 
-        tracker.Record("s|i", user, item, start, TimeSpan.FromMinutes(10));
-        tracker.Record("s|i", user, item, start.AddMinutes(30), TimeSpan.FromMinutes(10));
+        tracker.Record("s|i", user, item, start, 0, TimeSpan.FromMinutes(10));
+        tracker.Record("s|i", user, item, start.AddMinutes(30), Hour, TimeSpan.FromMinutes(10));
 
-        Assert.True(tracker.TryPopStartForItem(user, item, out var popped));
-        Assert.Equal(start, popped);
-        Assert.False(tracker.TryPopStart("s|i", out _));
+        Assert.Equal(start, tracker.EndWatch(user, item));
+        Assert.Null(tracker.EndWatch(user, item, "s|i"));
+    }
+
+    [Fact]
+    public void TrackerReportsTheFurthestPositionOfTheLatestSession()
+    {
+        var tracker = new SessionTracker();
+        var user = Guid.NewGuid();
+        var item = Guid.NewGuid();
+        var now = DateTime.UtcNow;
+        var window = TimeSpan.FromMinutes(10);
+
+        Assert.Null(tracker.FurthestPosition(user, item));
+
+        tracker.Record("old|i", user, item, now, Hour * 2, window);
+        Thread.Sleep(10);
+        tracker.Record("new|i", user, item, now, 0, window);
+        tracker.Record("new|i", user, item, now, Hour, window);
+        tracker.Record("new|i", user, item, now, Hour / 2, window);
+        tracker.Record("new|i", user, item, now, null, window);
+
+        Assert.Equal(Hour, tracker.FurthestPosition(user, item));
+        Assert.Null(tracker.FurthestPosition(Guid.NewGuid(), item));
+    }
+
+    [Fact]
+    public void ABriefReplayOfAWatchedItemDoesNotReachTheThreshold()
+    {
+        var tracker = new SessionTracker();
+        var user = Guid.NewGuid();
+        var item = Guid.NewGuid();
+        var runtime = Hour;
+        var window = TimeSpan.FromMinutes(10);
+
+        tracker.Record("a|i", user, item, DateTime.UtcNow, 0, window);
+        tracker.Record("a|i", user, item, DateTime.UtcNow, TimeSpan.FromSeconds(30).Ticks, window);
+
+        Assert.False(WatchRules.IsWatched(false, tracker.FurthestPosition(user, item), runtime, 0.90));
+    }
+
+    [Fact]
+    public void AWatchResumedInANewSessionReachesTheThreshold()
+    {
+        var tracker = new SessionTracker();
+        var user = Guid.NewGuid();
+        var item = Guid.NewGuid();
+        var runtime = Hour;
+        var window = TimeSpan.FromMinutes(10);
+        var firstStart = new DateTime(2026, 10, 26, 18, 0, 0, DateTimeKind.Utc);
+
+        tracker.Record("before-restart|i", user, item, firstStart, 0, window);
+        tracker.Record("before-restart|i", user, item, firstStart, runtime / 2, window);
+        Assert.False(WatchRules.IsWatched(false, tracker.FurthestPosition(user, item), runtime, 0.90));
+
+        Thread.Sleep(10);
+        tracker.Record("after-restart|i", user, item, firstStart.AddHours(2), runtime / 2, window);
+        tracker.Record("after-restart|i", user, item, firstStart.AddHours(2), runtime - TimeSpan.FromSeconds(5).Ticks, window);
+
+        Assert.True(WatchRules.IsWatched(false, tracker.FurthestPosition(user, item), runtime, 0.90));
+        Assert.Equal(firstStart, tracker.EndWatch(user, item));
+    }
+
+    [Fact]
+    public void EndingAWatchDropsEverySessionOfTheItem()
+    {
+        var tracker = new SessionTracker();
+        var user = Guid.NewGuid();
+        var item = Guid.NewGuid();
+        var other = Guid.NewGuid();
+        var start = new DateTime(2026, 10, 26, 18, 0, 0, DateTimeKind.Utc);
+        var window = TimeSpan.FromMinutes(10);
+
+        tracker.Record("a|i", user, item, start, Hour, window);
+        tracker.Record("b|i", user, item, start.AddHours(1), 0, window);
+        tracker.Record("a|o", user, other, start, 0, window);
+
+        Assert.Equal(start.AddHours(1), tracker.EndWatch(user, item, "b|i"));
+        Assert.Null(tracker.FurthestPosition(user, item));
+        Assert.Equal(0, tracker.FurthestPosition(user, other));
     }
 
     [Fact]
