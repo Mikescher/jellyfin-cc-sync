@@ -9,6 +9,14 @@
         "imageUrl": "https://raw.githubusercontent.com/Mikescher/jellyfin-cc-sync/master/assets/logo.png",
         "versions": [
             {
+                "version": "1.1.0.0",
+                "changelog": "Requires jClipCorn user data v4: viewed history entries are written as {d,c} objects with a configurable comment (HistoryComment, default: from jellyfin-cc-sync). Repeated watch signals within the dedup window are recorded as duplicates and never written. Accepts jClipCorn main schema 38 and 39.",
+                "targetAbi": "12.3.0.0",
+                "sourceUrl": "https://raw.githubusercontent.com/Mikescher/jellyfin-cc-sync/master/releases/jellyfin-cc-sync_1.1.0.0.zip",
+                "checksum": "ad561a6fcb7da4ba7c2fc0119c277e07",
+                "timestamp": "2026-11-25T12:40:09Z"
+            },
+            {
                 "version": "1.0.1.0",
                 "changelog": "A brief replay of an already watched item no longer counts as a watch: the played-state fallback now needs the stopped playback to have reached the watched threshold, so pausing and finishing later, even in a new session, still counts.",
                 "targetAbi": "12.3.0.0",
