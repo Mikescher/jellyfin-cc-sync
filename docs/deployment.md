@@ -3,7 +3,7 @@
 ## Requirements
 
 - Jellyfin **12.3** or newer.
-- jClipCorn database schema `38` (main) / `3` (user data).
+- jClipCorn database schema `38` or `39` (main) / `4` (user data).
 - jClipCorn's NFO export enabled for movies and series (Settings → NFO), so every NFO carries
   `<uniqueid type="clipcorn">`. Without it, movies and series fall back to TMDB/IMDB/name
   matching; episodes and seasons cannot be matched at all.

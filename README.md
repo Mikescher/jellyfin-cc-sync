@@ -20,7 +20,7 @@ https://raw.githubusercontent.com/Mikescher/jellyfin-cc-sync/master/manifest.jso
 ```
 
 Then install **jellyfin-cc-sync** from the catalogue and restart the server. Requires Jellyfin
-12.3 or newer and a jClipCorn database with schema 38 (main) / 4 (user data).
+12.3 or newer and a jClipCorn database with schema 38 or 39 (main) / 4 (user data).
 
 The jClipCorn `ClipCornDB` folder has to be visible to Jellyfin as a directory (bind mount, or a
 Docker cifs/nfs volume) and writable. The plugin does not mount shares itself. See

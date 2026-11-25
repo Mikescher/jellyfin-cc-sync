@@ -12,7 +12,9 @@ public sealed class CcSchemaException(string message) : Exception(message);
 /// </summary>
 public static class CcSchema
 {
-    public const int SupportedMainVersion = 38;
+    /// <summary>39 only adds <c>SERIES.SHOWSTATUS</c>, which the plugin neither reads nor writes.</summary>
+    public const int MinMainVersion = 38;
+    public const int MaxMainVersion = 39;
     public const int SupportedUserVersion = 4;
 
     public static CcDatabaseInfo ReadInfo(SqliteConnection main, SqliteConnection user)
@@ -36,9 +38,9 @@ public static class CcSchema
     {
         var problems = new List<string>();
 
-        if (info.MainVersion != SupportedMainVersion)
+        if (info.MainVersion < MinMainVersion || info.MainVersion > MaxMainVersion)
         {
-            problems.Add($"ClipCornDB.db has schema version {info.MainVersion}; this plugin supports {SupportedMainVersion}.");
+            problems.Add($"ClipCornDB.db has schema version {info.MainVersion}; this plugin supports {MinMainVersion} to {MaxMainVersion}.");
         }
 
         if (info.UserVersion != SupportedUserVersion)

@@ -132,8 +132,20 @@ public class CcReaderTests
         Assert.Contains("belongs to database other", ex.Message, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task ReadsAMainDatabaseMigratedTo39()
+    {
+        using var fixture = new FixtureDirectory();
+        fixture.Execute(CcFiles.MainDbName, "DROP TRIGGER IF EXISTS JCCTRIGGER_AUTOHISTORY_UPD_MAIN_INFO_IVALUE; ALTER TABLE SERIES ADD COLUMN SHOWSTATUS TINYINT NOT NULL DEFAULT 0; UPDATE INFO SET IVALUE = '39' WHERE IKEY = 'VERSION_DB'");
+
+        var library = await ReadAsync(fixture);
+        Assert.Equal(39, library.Info.MainVersion);
+        Assert.NotEmpty(library.Series);
+    }
+
     [Theory]
-    [InlineData(CcFiles.MainDbName, "VERSION_DB", "39", "schema version 39")]
+    [InlineData(CcFiles.MainDbName, "VERSION_DB", "37", "schema version 37")]
+    [InlineData(CcFiles.MainDbName, "VERSION_DB", "40", "schema version 40")]
     [InlineData(CcFiles.UserDbName, "VERSION_DB", "3", "schema version 3")]
     [InlineData(CcFiles.UserDbName, "VERSION_DB", "5", "schema version 5")]
     [InlineData(CcFiles.UserDbName, "VERSION_MAINDB", "40", "main schema 40")]

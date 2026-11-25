@@ -1,7 +1,7 @@
 # jClipCorn database reference
 
 Everything the plugin needs to know about the jClipCorn database, verified against the
-jClipCorn source in `../jClipCorn` (main DB v38, user-data DB v4). Source paths below are
+jClipCorn source in `../jClipCorn` (main DB v38/v39, user-data DB v4). Source paths below are
 relative to `../jClipCorn/src/main/de/jClipCorn/`.
 
 ## Files
@@ -31,7 +31,7 @@ All files live in one folder, `<jcc working dir>/ClipCornDB/`:
 
 | Key | Supported value |
 |---|---|
-| `main.INFO.VERSION_DB` | `38` |
+| `main.INFO.VERSION_DB` | `38` or `39` (39 only adds `SERIES.SHOWSTATUS`) |
 | `userdata.INFO.VERSION_DB` | `4` (object-form viewed history, see below) |
 | `userdata.INFO.VERSION_MAINDB` | must be `<=` main `VERSION_DB` |
 
