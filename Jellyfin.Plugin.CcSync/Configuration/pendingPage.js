@@ -29,7 +29,9 @@ export default function (view) {
                 ? '<button is="emby-button" class="raised ccPendRetry" data-id="' + p.Id + '"><span>Retry</span></button>' : '')
                 + (p.Status === 'failed' || p.Status === 'pending'
                     ? '<button is="emby-button" class="raised ccPendDiscard" data-id="' + p.Id + '"><span>Discard</span></button>' : '');
-            const last = p.LastError ? escapeHtml(p.LastError) : (p.CcEntry ? 'entry ' + escapeHtml(p.CcEntry) : '');
+            const last = p.DuplicateOf != null
+                ? 'watched again within the dedup window' + (p.DuplicateOf > 0 ? ', duplicate of #' + p.DuplicateOf : '') + '; not written'
+                : p.LastError ? escapeHtml(p.LastError) : (p.CcEntry ? 'entry ' + escapeHtml(p.CcEntry) : '');
             return '<tr class="detailTableBodyRow detailTableBodyRow-shaded">'
                 + '<td class="detailTableBodyCell">' + p.Id + '</td>'
                 + '<td class="detailTableBodyCell" style="white-space: nowrap;">' + escapeHtml(formatTimestamp(p.CreatedUtc)) + '</td>'

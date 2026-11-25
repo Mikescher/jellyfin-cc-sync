@@ -88,6 +88,61 @@ public class StateStoreTests
     }
 
     [Fact]
+    public void RepeatedWatchSignalsAreFinishedDuplicates()
+    {
+        using var state = new TempStateDb();
+        var item = Guid.NewGuid();
+        var original = state.Pending.Add(T0, PendingSource.Playback, item, "A", "Movie", "cc-1", "{}", T0);
+        Assert.Null(original.DuplicateOf);
+
+        var repeat = state.Pending.AddDuplicate(T0.AddSeconds(5), PendingSource.PlaybackFallback, item, "A", "Movie", "cc-1", "{}", T0, original.Id);
+        Assert.Equal(PendingStatus.Duplicate, repeat.Status);
+        Assert.Equal(original.Id, repeat.DuplicateOf);
+        Assert.Equal(T0.AddSeconds(5), repeat.FinishedUtc);
+        Assert.Equal(original.Id, state.Pending.GetPending().Single().Id);
+        Assert.False(state.Pending.Discard(repeat.Id, T0));
+        Assert.False(state.Pending.Retry(repeat.Id));
+
+        var orphan = state.Pending.AddDuplicate(T0.AddSeconds(6), PendingSource.Playback, item, "A", "Movie", null, "{}", T0, null);
+        Assert.Equal(PendingStatus.Duplicate, orphan.Status);
+        Assert.Equal(0, orphan.DuplicateOf);
+    }
+
+    [Fact]
+    public void FindsTheRecentWatchOfAnItemOrElement()
+    {
+        using var state = new TempStateDb();
+        var item = Guid.NewGuid();
+        var original = state.Pending.Add(T0, PendingSource.Playback, item, "A", "Episode", "01A17A31-06C5-78F6-B841-09A525E56001", "{}", T0);
+        state.Pending.Finish(original.Id, PendingStatus.Written, T0.AddMinutes(1), "{}", null);
+        state.Pending.AddDuplicate(T0.AddMinutes(2), PendingSource.Playback, item, "A", "Episode", null, "{}", T0, original.Id);
+
+        Assert.Equal(original.Id, state.Pending.FindRecentWatch(item, null, T0.AddMinutes(-60))!.Id);
+        Assert.Equal(original.Id, state.Pending.FindRecentWatch(Guid.NewGuid(), "01a17a31-06c5-78f6-b841-09a525e56001", T0.AddMinutes(-60))!.Id);
+        Assert.Equal(original.Id, state.Pending.FindRecentWatch(item, null, T0)!.Id);
+        Assert.Null(state.Pending.FindRecentWatch(item, null, T0.AddSeconds(1)));
+        Assert.Null(state.Pending.FindRecentWatch(Guid.NewGuid(), null, T0.AddMinutes(-60)));
+        Assert.Null(state.Pending.FindRecentWatch(Guid.NewGuid(), "cc-other", T0.AddMinutes(-60)));
+    }
+
+    [Fact]
+    public void MigratesAVersionOneDatabaseWithItsPendingUpdates()
+    {
+        using var state = new TempStateDb();
+        var kept = state.Pending.Add(T0, PendingSource.Playback, Guid.NewGuid(), "A", "Movie", null, "{}", T0);
+        using (var connection = state.Db.Open())
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = "DROP INDEX pending_created; ALTER TABLE pending DROP COLUMN duplicate_of; PRAGMA user_version = 1;";
+            command.ExecuteNonQuery();
+        }
+
+        var migrated = new PendingStore(new StateDb(state.Path)).Get(kept.Id)!;
+        Assert.Equal(PendingStatus.Pending, migrated.Status);
+        Assert.Null(migrated.DuplicateOf);
+    }
+
+    [Fact]
     public void HistoryFiltersAndPages()
     {
         using var state = new TempStateDb();

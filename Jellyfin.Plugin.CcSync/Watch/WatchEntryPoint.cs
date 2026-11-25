@@ -37,6 +37,7 @@ public sealed class WatchEntryPoint : IHostedService, IDisposable
     private readonly FlushEngine _flush;
     private readonly ILogger<WatchEntryPoint> _logger;
     private readonly CancellationTokenSource _cts = new();
+    private readonly Lock _completeLock = new();
 
     private Task? _collector;
 
@@ -312,19 +313,49 @@ public sealed class WatchEntryPoint : IHostedService, IDisposable
             return;
         }
 
-        if (!_tracker.TryClaim(SessionTracker.DedupKey(userId, item.Id), TimeSpan.FromMinutes(config.DedupMinutes)))
-        {
-            _logger.LogDebug("Watch of {Item} ignored: already recorded within the dedup window", item.Name);
-            return;
-        }
-
-        var now = DateTime.UtcNow;
         var name = JfItems.DisplayName(item);
         var kind = JfItems.Kind(item)!;
         var ccId = JfItems.ProviderId(item, JfItems.ClipCornProvider);
         var watchedAt = WatchRules.TruncateToSeconds(watchedAtUtc);
+        var window = TimeSpan.FromMinutes(config.DedupMinutes);
 
-        var pending = _pending.Add(now, source, item.Id, name, kind, ccId, PendingMatchKeys.From(item).ToJson(), watchedAt);
+        PendingUpdate pending;
+        PendingUpdate? original;
+        var now = DateTime.UtcNow;
+
+        // Serialised so two signals arriving together cannot both miss each other in state.db.
+        lock (_completeLock)
+        {
+            // The in-memory claim also silences the user-data fallback of a watch the stop event
+            // already recorded; state.db additionally covers restarts and other Jellyfin items of
+            // the same jClipCorn element.
+            var claimed = _tracker.TryClaim(SessionTracker.DedupKey(userId, item.Id), window);
+            original = window > TimeSpan.Zero ? _pending.FindRecentWatch(item.Id, ccId, now - window) : null;
+
+            pending = claimed && original is null
+                ? _pending.Add(now, source, item.Id, name, kind, ccId, PendingMatchKeys.From(item).ToJson(), watchedAt)
+                : _pending.AddDuplicate(now, source, item.Id, name, kind, ccId, PendingMatchKeys.From(item).ToJson(), watchedAt, original?.Id);
+        }
+
+        if (pending.DuplicateOf is not null)
+        {
+            var of = original is null ? "an earlier watch" : $"#{original.Id}";
+            _history.Add(new HistoryEntry
+            {
+                TsUtc = now,
+                Kind = HistoryKinds.PendingDuplicate,
+                JfItemId = item.Id.ToString("N"),
+                CcId = ccId,
+                ItemName = name,
+                ItemKind = kind,
+                NewValue = StateDb.FormatTime(watchedAt),
+                Detail = $"#{pending.Id}, source {source}, watched at {watchedAt:yyyy-MM-dd HH:mm:ss} UTC: duplicate of {of} "
+                    + $"(watched again within {config.DedupMinutes} min), not written",
+            });
+
+            _logger.LogInformation("Watch of {Item} is a duplicate of {Original} within {Minutes} min; recorded as #{Id}, not written", name, of, config.DedupMinutes, pending.Id);
+            return;
+        }
 
         _history.Add(new HistoryEntry
         {

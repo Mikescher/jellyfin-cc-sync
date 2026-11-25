@@ -65,7 +65,10 @@ other way.
 A movie or episode played by the sync user to completion (or past 90 %) becomes a pending
 update carrying the playback start time. If jClipCorn is not running (no fresh
 `ClipCornDB.db.~lock`), it is written 15 seconds later; otherwise a task retries every 5 minutes.
-The history entry carries the comment `Jellyfin` (configurable) to mark where it came from.
+The history entry carries the comment `from jellyfin-cc-sync` (configurable) to mark where it
+came from; existing entries and their comments are left exactly as they are. A second watch of
+the same item (or jClipCorn element) within 60 minutes is shown as `duplicate` on the Pending and
+History pages and not written.
 Before each write the user-data database is backed up (the last 20 copies are kept). Like
 jClipCorn itself, writing a watch removes the "Watch later" tag (configurable), for an episode
 also from its series. Only `ClipCornUserData.db` is ever written.
@@ -100,7 +103,7 @@ Dashboard → Plugins → jellyfin-cc-sync. The full list with defaults is in
 | Write watches back | on | Queue Jellyfin watches for jClipCorn |
 | Manual mark creates pending | off | Also queue "mark played" |
 | Reset "Watch later" | on | Remove jClipCorn's watch-later tag on write |
-| History comment | `Jellyfin` | Comment of the viewed-history entries the plugin writes (may be empty) |
+| History comment | `from jellyfin-cc-sync` | Comment of the viewed-history entries the plugin writes (may be empty) |
 | Change guard | 100 / 20 | Changes / un-watches per run before confirmation is needed |
 
 The schedules are the triggers of the two scheduled tasks *Sync jClipCorn → Jellyfin* (30 min)

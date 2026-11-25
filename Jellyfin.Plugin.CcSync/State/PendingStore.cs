@@ -18,7 +18,11 @@ public static class PendingSource
     public const string Manual = "manual";
 }
 
-/// <summary>A Jellyfin watch waiting to be (or already) written into jClipCorn's viewed history.</summary>
+/// <summary>
+/// A Jellyfin watch waiting to be (or already) written into jClipCorn's viewed history.
+/// <see cref="DuplicateOf"/> is set on a repeated signal of a watch: the original's id, or 0 when
+/// the original is not in state.db.
+/// </summary>
 public sealed record PendingUpdate(
     long Id,
     DateTime CreatedUtc,
@@ -34,12 +38,13 @@ public sealed record PendingUpdate(
     DateTime? LastAttemptUtc,
     string? LastError,
     DateTime? FinishedUtc,
-    string? CcEntry);
+    string? CcEntry,
+    long? DuplicateOf);
 
 public sealed class PendingStore
 {
     private const string Columns =
-        "id, created_utc, source, jf_item_id, item_name, item_kind, cc_id, match_keys, watched_at_utc, status, attempts, last_attempt_utc, last_error, finished_utc, cc_entry";
+        "id, created_utc, source, jf_item_id, item_name, item_kind, cc_id, match_keys, watched_at_utc, status, attempts, last_attempt_utc, last_error, finished_utc, cc_entry, duplicate_of";
 
     private readonly StateDb _db;
 
@@ -49,14 +54,49 @@ public sealed class PendingStore
     }
 
     public PendingUpdate Add(DateTime createdUtc, string source, Guid jfItemId, string itemName, string itemKind, string? ccId, string matchKeys, DateTime watchedAtUtc)
+        => Insert(createdUtc, source, jfItemId, itemName, itemKind, ccId, matchKeys, watchedAtUtc, null);
+
+    /// <summary>
+    /// Records a repeated watch signal as finished <c>duplicate</c>; it is never written to
+    /// jClipCorn. <paramref name="duplicateOf"/> is null when the original is not in state.db.
+    /// </summary>
+    public PendingUpdate AddDuplicate(DateTime createdUtc, string source, Guid jfItemId, string itemName, string itemKind, string? ccId, string matchKeys, DateTime watchedAtUtc, long? duplicateOf)
+        => Insert(createdUtc, source, jfItemId, itemName, itemKind, ccId, matchKeys, watchedAtUtc, duplicateOf ?? 0);
+
+    /// <summary>
+    /// The newest watch (not itself a repeated signal) created at or after <paramref name="sinceUtc"/>
+    /// for the Jellyfin item or, when given, the jClipCorn element.
+    /// </summary>
+    public PendingUpdate? FindRecentWatch(Guid jfItemId, string? ccId, DateTime sinceUtc)
+    {
+        using var connection = _db.Open();
+        return connection.Query(
+            $"""
+            SELECT {Columns} FROM pending
+            WHERE duplicate_of IS NULL AND created_utc >= $since
+              AND (jf_item_id = $item OR ($cc IS NOT NULL AND cc_id = $cc COLLATE NOCASE))
+            ORDER BY id DESC LIMIT 1
+            """,
+            Map,
+            ("$since", StateDb.FormatTime(sinceUtc)),
+            ("$item", jfItemId.ToString("N")),
+            ("$cc", ccId)).FirstOrDefault();
+    }
+
+    /// <param name="duplicateOf">null for a new watch; the original's id, or 0 when it is unknown, for a repeated signal.</param>
+    private PendingUpdate Insert(DateTime createdUtc, string source, Guid jfItemId, string itemName, string itemKind, string? ccId, string matchKeys, DateTime watchedAtUtc, long? duplicateOf)
     {
         using var connection = _db.Open();
         var id = (long)connection.Scalar(
             """
-            INSERT INTO pending (created_utc, source, jf_item_id, item_name, item_kind, cc_id, match_keys, watched_at_utc, status)
-            VALUES ($created, $source, $item, $name, $kind, $cc, $keys, $watched, 'pending')
+            INSERT INTO pending (created_utc, source, jf_item_id, item_name, item_kind, cc_id, match_keys, watched_at_utc, status, finished_utc, duplicate_of)
+            VALUES ($created, $source, $item, $name, $kind, $cc, $keys, $watched,
+                    CASE WHEN $dup IS NULL THEN 'pending' ELSE 'duplicate' END,
+                    CASE WHEN $dup IS NULL THEN NULL ELSE $created END,
+                    $dup)
             RETURNING id
             """,
+            ("$dup", duplicateOf),
             ("$created", StateDb.FormatTime(createdUtc)),
             ("$source", source),
             ("$item", jfItemId.ToString("N")),
@@ -192,5 +232,6 @@ public sealed class PendingStore
         StateDb.ParseTimeOrNull(r.StringOrNull(11)),
         r.StringOrNull(12),
         StateDb.ParseTimeOrNull(r.StringOrNull(13)),
-        r.StringOrNull(14));
+        r.StringOrNull(14),
+        r.IsDBNull(15) ? null : r.GetInt64(15));
 }

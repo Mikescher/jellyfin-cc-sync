@@ -264,7 +264,7 @@ transaction, after `PRAGMA recursive_triggers = true`:
 1. `SELECT VIEWED_HISTORY, TAGS FROM MOVIES|EPISODES WHERE ID = ?`.
 2. Parse with jClipCorn semantics. Unparseable → fail this update, leave the row untouched.
 3. Add the entry `{"d":"yyyy-MM-dd HH:mm:ss","c":"<HistoryComment>"}` (local time; the comment
-   from the plugin setting `HistoryComment`, default `Jellyfin`, may be empty) with jClipCorn's
+   from the plugin setting `HistoryComment`, default `from jellyfin-cc-sync`, may be empty) with jClipCorn's
    `add()` semantics. Skipped as equal → the history stays as it is ("duplicate").
 4. If `ResetWatchLaterOnWatch`: remove `3` from TAGS of the element; for an episode also from
    its series' user row (`SERIES`, id via main `EPISODES.SEASONID → SEASONS.SERIESID`). This also

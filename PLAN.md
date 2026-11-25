@@ -195,7 +195,7 @@ Singletons: `StateDb`, `PendingStore`, `HistoryStore`, `RunStore`, `SessionTrack
 | | `StartCoalesceMinutes` | `10` | Pauses/seeks shorter than this keep the original start time |
 | | `ManualMarkCreatesPending` | off | "Mark played" in Jellyfin also creates a pending update |
 | | `ResetWatchLaterOnWatch` | on | Remove jClipCorn tag 3 (movie; episode + series) on write |
-| | `HistoryComment` | `Jellyfin` | Comment (`c`) of the viewed-history entries the plugin writes; may be empty |
+| | `HistoryComment` | `from jellyfin-cc-sync` | Comment (`c`) of the viewed-history entries the plugin writes; may be empty |
 | Sync | `SyncEnabled` | on | CC → JF runs do anything at all |
 | | `SyncPlayed` / `SyncPlayCount` / `SyncLastPlayed` | on | Fields owned by the sync |
 | | `SyncFavorites` | on | Score → `IsFavorite` |
@@ -227,9 +227,11 @@ CREATE TABLE pending (
   watched_at_utc TEXT NOT NULL,
   status TEXT NOT NULL,                                -- pending|written|duplicate|failed|discarded
   attempts INTEGER NOT NULL DEFAULT 0, last_attempt_utc TEXT NULL, last_error TEXT NULL,
-  finished_utc TEXT NULL, cc_entry TEXT NULL);
+  finished_utc TEXT NULL, cc_entry TEXT NULL,
+  duplicate_of INTEGER NULL);                          -- repeated watch signal: original id, 0 if unknown
 CREATE INDEX pending_status ON pending(status);
 CREATE INDEX pending_item ON pending(jf_item_id);
+CREATE INDEX pending_created ON pending(created_utc);
 
 CREATE TABLE history (
   id INTEGER PRIMARY KEY, ts_utc TEXT NOT NULL, run_id TEXT NULL, kind TEXT NOT NULL,

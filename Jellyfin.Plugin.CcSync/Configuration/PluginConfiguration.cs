@@ -44,7 +44,7 @@ public class PluginConfiguration : BasePluginConfiguration
     public bool ResetWatchLaterOnWatch { get; set; } = true;
 
     /// <summary>Gets or sets the comment of the viewed-history entries the plugin writes; may be empty.</summary>
-    public string HistoryComment { get; set; } = "Jellyfin";
+    public string HistoryComment { get; set; } = "from jellyfin-cc-sync";
 
     public bool SyncEnabled { get; set; } = true;
 

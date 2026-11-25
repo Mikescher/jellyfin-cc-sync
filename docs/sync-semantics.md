@@ -130,7 +130,12 @@ Same rules as jellyfin-watchnotify, restricted to the sync user and to movies/ep
   counts towards a later stop.
 - `UserDataSaved` with `TogglePlayed` and `Played=true` only if `ManualMarkCreatesPending`
   (default **off**); watched-at = now.
-- Duplicate suppression per item within `DedupMinutes` (default 60), shared by all paths.
+- Duplicate suppression within `DedupMinutes` (default 60), shared by all paths: a watch of the
+  same Jellyfin item, or of an item with the same `clipcorn` id, whose pending update was created
+  within the window is recorded as a pending update with status `duplicate` and `duplicate_of`
+  set to the original, plus a `pending-duplicate` history entry, and is never written. The check
+  runs against `state.db`, so it survives server restarts. The user-data fallback of a watch the
+  stop event already recorded is the same playback, not a repeated signal, and stays silent.
 - `UserDataSaved` with `Import` (the plugin's own writes, NFO imports) is ignored.
 
 Watched-at for playback = **start** of the watch (first `PlaybackStart` of the session, kept
@@ -148,11 +153,12 @@ Created for every detected watch, before any attempt to write:
 | `MatchKeys` | provider ids, name, year captured at creation (the item may be re-identified later) |
 | `WatchedAtUtc` | see above, truncated to seconds |
 | `Source` | `playback`, `playback-fallback`, `manual` |
-| `Status` | `pending` → `written` / `duplicate` / `failed`; `discarded` by hand |
+| `Status` | `pending` → `written` / `duplicate` / `failed`; `discarded` by hand; a repeated watch signal is created as `duplicate` |
+| `DuplicateOf` | for a repeated watch signal: id of the original, `0` if it is no longer in `state.db` |
 
 The CC entry is rendered at write time: `d` = `WatchedAtUtc` in `ClipCornTimeZone`,
-`yyyy-MM-dd HH:mm:ss`; `c` = the setting `HistoryComment` (default `Jellyfin`, may be empty).
-The written element, e.g. `{"d":"2026-10-26 21:15:00","c":"Jellyfin"}`, is stored on the pending
+`yyyy-MM-dd HH:mm:ss`; `c` = the setting `HistoryComment` (default `from jellyfin-cc-sync`, may
+be empty). The written element, e.g. `{"d":"2026-10-26 21:15:00","c":"from jellyfin-cc-sync"}`, is stored on the pending
 update and shown on the Pending and History pages.
 
 ### Writing
@@ -234,7 +240,7 @@ for `HistoryRetentionDays` (default 0 = forever):
 | `jf-favorite` | `IsFavorite` changed |
 | `jf-tag-added`, `jf-tag-removed` | one entry per tag |
 | `pending-created` | detected watch (source, watched-at) |
-| `pending-written`, `pending-duplicate` | write outcome, with the CC entry text and whether "watch later" was removed |
+| `pending-written`, `pending-duplicate` | write outcome, with the CC entry text and whether "watch later" was removed; `pending-duplicate` also for a repeated watch signal (detail names the original) |
 | `pending-failed`, `pending-discarded`, `pending-retry` | failures and manual actions |
 | `cc-locked` | first time a write had to wait for a given lock holder |
 | `run-sync`, `run-flush` | one summary per run (counts, duration, outcome, abort reason) |

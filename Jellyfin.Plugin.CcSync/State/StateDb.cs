@@ -42,6 +42,10 @@ public sealed class StateDb
 
         CREATE TABLE kv (key TEXT PRIMARY KEY, value TEXT NOT NULL);
         """,
+        """
+        ALTER TABLE pending ADD COLUMN duplicate_of INTEGER NULL;
+        CREATE INDEX pending_created ON pending(created_utc);
+        """,
     ];
 
     private readonly string _path;
