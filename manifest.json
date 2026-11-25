@@ -9,6 +9,14 @@
         "imageUrl": "https://raw.githubusercontent.com/Mikescher/jellyfin-cc-sync/master/assets/logo.png",
         "versions": [
             {
+                "version": "1.0.1.0",
+                "changelog": "Release 1.0.1.0: a brief replay of a watched item is no longer a watch\n\nJellyfin leaves Played set while an already watched item is replayed and\nsaves user data with PlaybackFinished on every stop, so the delayed\nUserDataSaved fallback queued a pending update for any stop of such an\nitem, even after a few seconds.\n\nThe session tracker now keeps the furthest position reported per session,\nand the fallback only fires when the item's most recently active session\nreached the watched threshold. A finished watch drops every tracked\nsession of the item, so an earlier partial session never counts towards\na later stop. Pausing and finishing later, also in a new session after a\nclient restart, still counts.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01NDoExrFyrE9fbsjSNuV8A9",
+                "targetAbi": "12.3.0.0",
+                "sourceUrl": "https://raw.githubusercontent.com/Mikescher/jellyfin-cc-sync/master/releases/jellyfin-cc-sync_1.0.1.0.zip",
+                "checksum": "59f7c26fea3fab4aa38f82fb5987b7e5",
+                "timestamp": "2026-11-25T14:08:10Z"
+            },
+            {
                 "version": "1.0.0.0",
                 "changelog": "Release 1.0.0.0\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01XtrzJP3NLotNyqKnhwfcA7",
                 "targetAbi": "12.3.0.0",
@@ -23,14 +31,6 @@
                 "sourceUrl": "https://raw.githubusercontent.com/Mikescher/jellyfin-cc-sync/master/releases/jellyfin-cc-sync_1.1.0.0.zip",
                 "checksum": "ad561a6fcb7da4ba7c2fc0119c277e07",
                 "timestamp": "2026-11-25T12:40:09Z"
-            },
-            {
-                "version": "1.0.1.0",
-                "changelog": "A brief replay of an already watched item no longer counts as a watch: the played-state fallback now needs the stopped playback to have reached the watched threshold, so pausing and finishing later, even in a new session, still counts.",
-                "targetAbi": "12.3.0.0",
-                "sourceUrl": "https://raw.githubusercontent.com/Mikescher/jellyfin-cc-sync/master/releases/jellyfin-cc-sync_1.0.1.0.zip",
-                "checksum": "e00084ca01ac4da8cd6201ee749524a8",
-                "timestamp": "2026-10-27T20:34:37Z"
             }
         ]
     }
