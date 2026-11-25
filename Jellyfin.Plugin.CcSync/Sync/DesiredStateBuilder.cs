@@ -173,16 +173,17 @@ public static class DesiredStateBuilder
     }
 
     /// <summary>
-    /// Pending entries per element. The element is found through the Jellyfin item's match, or the
-    /// clipcorn id stored on the pending update when the item is not in the index.
+    /// Pending entries per element, without comment: only the dates reach Jellyfin. The element is
+    /// found through the Jellyfin item's match, or the clipcorn id stored on the pending update when
+    /// the item is not in the index.
     /// </summary>
-    private static Dictionary<string, List<CcDateTime>> BuildOverlay(
+    private static Dictionary<string, List<CcViewedEntry>> BuildOverlay(
         CcLibrary library,
         Dictionary<Guid, MatchedItem> byItem,
         IReadOnlyList<PendingOverlay> pending,
         TimeZoneInfo zone)
     {
-        var overlay = new Dictionary<string, List<CcDateTime>>(StringComparer.OrdinalIgnoreCase);
+        var overlay = new Dictionary<string, List<CcViewedEntry>>(StringComparer.OrdinalIgnoreCase);
         foreach (var update in pending)
         {
             var element = byItem.TryGetValue(update.JfItemId, out var matched)
@@ -199,7 +200,7 @@ public static class DesiredStateBuilder
                 overlay[element.Id] = entries = [];
             }
 
-            entries.Add(CcDateTime.FromUtc(update.WatchedAtUtc, zone));
+            entries.Add(CcViewedEntry.Create(CcDateTime.FromUtc(update.WatchedAtUtc, zone), string.Empty));
         }
 
         return overlay;

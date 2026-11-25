@@ -13,10 +13,10 @@ public class CcWriterTests
     private const string SteinsGate = "01a17a31-0313-7518-af58-e4b38339ee79";
     private const string SteinsGateEp1 = "01a17a31-033a-72a6-81ea-c45f4585d62c";
 
-    private static CcDateTime E(string raw)
+    private static CcViewedEntry E(string raw, string comment = "Jellyfin")
     {
         Assert.True(CcDateTime.TryParse(raw, out var value));
-        return value;
+        return CcViewedEntry.Create(value, comment);
     }
 
     private static string Duuid(FixtureDirectory f) => (string)f.Scalar(CcFiles.MainDbName, "SELECT IVALUE FROM INFO WHERE IKEY = 'DATABASE_UNIVERSALLY_UNIQUE_IDENTIFIER'")!;
@@ -52,14 +52,14 @@ public class CcWriterTests
 
         Assert.Equal(CcWriteResult.Written, outcome.Result);
         Assert.False(outcome.WatchLaterRemoved);
-        Assert.Equal("[\"2023-11-05 11:00:00\",\"2026-10-26 21:15:00\"]", Col(f, "MOVIES", "VIEWED_HISTORY", Super8));
+        Assert.Equal("""[{"d":"2023-11-05 11:00:00","c":""},{"d":"2026-10-26 21:15:00","c":"Jellyfin"}]""", Col(f, "MOVIES", "VIEWED_HISTORY", Super8));
         Assert.Equal("[]", Col(f, "MOVIES", "TAGS", Super8));
         Assert.Equal(others, Dump(f, Super8));
 
         // The history trigger logged exactly the one changed column.
         Assert.Equal(1, Count(f, $"SELECT COUNT(*) FROM HISTORY WHERE ID = '{Super8}'"));
         Assert.Equal(
-            "MOVIES|UPDATE|VIEWED_HISTORY|[\"2023-11-05 11:00:00\"]|[\"2023-11-05 11:00:00\",\"2026-10-26 21:15:00\"]",
+            """MOVIES|UPDATE|VIEWED_HISTORY|[{"d":"2023-11-05 11:00:00","c":""}]|[{"d":"2023-11-05 11:00:00","c":""},{"d":"2026-10-26 21:15:00","c":"Jellyfin"}]""",
             f.Scalar(CcFiles.UserDbName, $"SELECT [TABLE] || '|' || [ACTION] || '|' || FIELD || '|' || OLD || '|' || [NEW] FROM HISTORY WHERE ID = '{Super8}'"));
 
         Assert.Equal("delete", f.Scalar(CcFiles.UserDbName, "PRAGMA journal_mode"));
@@ -75,7 +75,7 @@ public class CcWriterTests
         Apply(f, true, new CcWriteRequest(1, Bomber, CcKind.Movie, E("2026-10-26 21:15:00"), null));
 
         Assert.Equal(
-            $"{Bomber}|[\"2026-10-26 21:15:00\"]|[]|6|",
+            Bomber + """|[{"d":"2026-10-26 21:15:00","c":"Jellyfin"}]|[]|6|""",
             f.Scalar(CcFiles.UserDbName, $"SELECT ID || '|' || VIEWED_HISTORY || '|' || TAGS || '|' || SCORE || '|' || SCORECOMMENT FROM MOVIES WHERE ID = '{Bomber}'"));
 
         // A new user row is logged as four UPDATEs from the defaults, never as an INSERT.
@@ -91,7 +91,7 @@ public class CcWriterTests
         var outcome = Apply(f, true, new CcWriteRequest(1, Gefaehrten, CcKind.Movie, E("2026-10-26 21:15:00"), null)).Single();
 
         Assert.True(outcome.WatchLaterRemoved);
-        Assert.Equal("[\"UNSPECIFIED\",\"2026-10-26 21:15:00\"]", Col(f, "MOVIES", "VIEWED_HISTORY", Gefaehrten));
+        Assert.Equal("""[{"d":"UNSPECIFIED","c":""},{"d":"2026-10-26 21:15:00","c":"Jellyfin"}]""", Col(f, "MOVIES", "VIEWED_HISTORY", Gefaehrten));
         Assert.Equal("[]", Col(f, "MOVIES", "TAGS", Gefaehrten));
         Assert.Equal(2, Count(f, $"SELECT COUNT(*) FROM HISTORY WHERE ID = '{Gefaehrten}'"));
     }
@@ -133,7 +133,7 @@ public class CcWriterTests
 
         Assert.Equal(CcWriteResult.Duplicate, outcome.Result);
         Assert.True(outcome.WatchLaterRemoved);
-        Assert.Equal("[\"2023-11-05 11:00:00\"]", Col(f, "MOVIES", "VIEWED_HISTORY", Super8));
+        Assert.Equal("""[{"d":"2023-11-05 11:00:00","c":""}]""", Col(f, "MOVIES", "VIEWED_HISTORY", Super8));
         Assert.Equal("[]", Col(f, "MOVIES", "TAGS", Super8));
         Assert.Equal("TAGS", f.Scalar(CcFiles.UserDbName, $"SELECT FIELD FROM HISTORY WHERE ID = '{Super8}'"));
     }
@@ -148,7 +148,7 @@ public class CcWriterTests
         Assert.Equal(CcWriteResult.Written, outcome.Result);
         Assert.True(outcome.WatchLaterRemoved);
         Assert.True(outcome.SeriesWatchLaterRemoved);
-        Assert.Equal("[\"2026-10-26 21:15:00\"]", Col(f, "EPISODES", "VIEWED_HISTORY", SteinsGateEp1));
+        Assert.Equal("""[{"d":"2026-10-26 21:15:00","c":"Jellyfin"}]""", Col(f, "EPISODES", "VIEWED_HISTORY", SteinsGateEp1));
         Assert.Equal("[]", Col(f, "EPISODES", "TAGS", SteinsGateEp1));
         Assert.Equal("[]", Col(f, "SERIES", "TAGS", SteinsGate));
         Assert.Equal(4L, f.Scalar(CcFiles.UserDbName, $"SELECT SCORE FROM SERIES WHERE ID = '{SteinsGate}'"));
@@ -175,7 +175,7 @@ public class CcWriterTests
     public void AnUnparseableHistoryFailsAndStaysByteIdentical()
     {
         using var f = new FixtureDirectory();
-        const string broken = "[\"2023-11-05 11:00:00\",\"bad\"]";
+        const string broken = """[{"d":"2023-11-05 11:00:00","c":""},{"d":"bad","c":""}]""";
         f.Execute(CcFiles.UserDbName, $"UPDATE MOVIES SET VIEWED_HISTORY = '{broken}', TAGS = '[3]' WHERE ID = '{Super8}'; DELETE FROM HISTORY");
 
         var outcome = Apply(f, true, new CcWriteRequest(1, Super8, CcKind.Movie, E("2026-10-26 21:15:00"), null)).Single();
@@ -191,11 +191,68 @@ public class CcWriterTests
     public void KeepsMillisecondEntriesVerbatim()
     {
         using var f = new FixtureDirectory();
-        f.Execute(CcFiles.UserDbName, $"UPDATE MOVIES SET VIEWED_HISTORY = '[\"2023-11-05 11:00:00.500\"]' WHERE ID = '{Super8}'");
+        f.Execute(CcFiles.UserDbName, $$"""UPDATE MOVIES SET VIEWED_HISTORY = '[{"d":"2023-11-05 11:00:00.500","c":""}]' WHERE ID = '{{Super8}}'""");
 
         Apply(f, true, new CcWriteRequest(1, Super8, CcKind.Movie, E("2020-01-01 10:00:00"), null));
 
-        Assert.Equal("[\"2020-01-01 10:00:00\",\"2023-11-05 11:00:00.500\"]", Col(f, "MOVIES", "VIEWED_HISTORY", Super8));
+        Assert.Equal("""[{"d":"2020-01-01 10:00:00","c":"Jellyfin"},{"d":"2023-11-05 11:00:00.500","c":""}]""", Col(f, "MOVIES", "VIEWED_HISTORY", Super8));
+    }
+
+    [Fact]
+    public void KeepsOldStringAndObjectElementsByteIdentical()
+    {
+        using var f = new FixtureDirectory();
+        const string existing = """["UNSPECIFIED",{"d":"2016-11-27 16:48:30","c":"Kino"},{"d":"2023-11-05 11:00:00"},{ "d" : "2024-01-01" , "c" : "a\u00e4" }]""";
+        f.Execute(CcFiles.UserDbName, $"UPDATE MOVIES SET VIEWED_HISTORY = '{existing}' WHERE ID = '{Super8}'");
+
+        var outcome = Apply(f, true, new CcWriteRequest(1, Super8, CcKind.Movie, E("2020-02-02 20:20:20"), null)).Single();
+
+        Assert.Equal(CcWriteResult.Written, outcome.Result);
+        Assert.Equal(
+            """["UNSPECIFIED",{"d":"2016-11-27 16:48:30","c":"Kino"},{"d":"2020-02-02 20:20:20","c":"Jellyfin"},{"d":"2023-11-05 11:00:00"},{ "d" : "2024-01-01" , "c" : "a\u00e4" }]""",
+            Col(f, "MOVIES", "VIEWED_HISTORY", Super8));
+    }
+
+    [Fact]
+    public void ADuplicateIsDetectedByDateWhateverTheComment()
+    {
+        using var f = new FixtureDirectory();
+        const string existing = """[{"d":"2023-11-05 11:00:00","c":"Kino"}]""";
+        f.Execute(CcFiles.UserDbName, $"UPDATE MOVIES SET VIEWED_HISTORY = '{existing}' WHERE ID = '{Super8}'; DELETE FROM HISTORY");
+
+        var outcome = Apply(f, true, new CcWriteRequest(1, Super8, CcKind.Movie, E("2023-11-05 11:00:00"), null)).Single();
+
+        Assert.Equal(CcWriteResult.Duplicate, outcome.Result);
+        Assert.Equal(existing, Col(f, "MOVIES", "VIEWED_HISTORY", Super8));
+        Assert.Equal(0, Count(f, "SELECT COUNT(*) FROM HISTORY"));
+    }
+
+    [Theory]
+    [InlineData("", """{"d":"2026-10-26 21:15:00","c":""}""")]
+    [InlineData("Jellyfin", """{"d":"2026-10-26 21:15:00","c":"Jellyfin"}""")]
+    [InlineData("Kino \"3\" C:\\x </b> a/b \u0001\t\u00e4", """{"d":"2026-10-26 21:15:00","c":"Kino \"3\" C:\\x <\/b> a/b \u0001\tä"}""")]
+    public void WritesTheConfiguredCommentEscapedLikeJClipCorn(string comment, string expected)
+    {
+        using var f = new FixtureDirectory();
+
+        var outcome = Apply(f, true, new CcWriteRequest(1, Bomber, CcKind.Movie, E("2026-10-26 21:15:00", comment), null)).Single();
+
+        Assert.Equal(expected, outcome.Entry);
+        Assert.Equal("[" + expected + "]", Col(f, "MOVIES", "VIEWED_HISTORY", Bomber));
+    }
+
+    [Fact]
+    public void AMalformedObjectFailsAndStaysByteIdentical()
+    {
+        using var f = new FixtureDirectory();
+        const string broken = """[{"d":"2023-11-05 11:00:00","c":null}]""";
+        f.Execute(CcFiles.UserDbName, $"UPDATE MOVIES SET VIEWED_HISTORY = '{broken}' WHERE ID = '{Super8}'; DELETE FROM HISTORY");
+
+        var outcome = Apply(f, true, new CcWriteRequest(1, Super8, CcKind.Movie, E("2026-10-26 21:15:00"), null)).Single();
+
+        Assert.Equal(CcWriteResult.Failed, outcome.Result);
+        Assert.Equal(broken, Col(f, "MOVIES", "VIEWED_HISTORY", Super8));
+        Assert.Equal(0, Count(f, "SELECT COUNT(*) FROM HISTORY"));
     }
 
     [Fact]
@@ -211,7 +268,7 @@ public class CcWriterTests
             new CcWriteRequest(3, Bomber, CcKind.Movie, E("2026-10-26 21:15:00"), null));
 
         Assert.Equal([CcWriteResult.Written, CcWriteResult.Written, CcWriteResult.Duplicate], outcomes.Select(o => o.Result));
-        Assert.Equal("[\"2026-10-20 10:00:00\",\"2026-10-26 21:15:00\"]", Col(f, "MOVIES", "VIEWED_HISTORY", Bomber));
+        Assert.Equal("""[{"d":"2026-10-20 10:00:00","c":"Jellyfin"},{"d":"2026-10-26 21:15:00","c":"Jellyfin"}]""", Col(f, "MOVIES", "VIEWED_HISTORY", Bomber));
     }
 
     [Fact]

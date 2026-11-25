@@ -29,7 +29,7 @@ public class CcReaderTests
         Assert.Equal(0, library.OrphanUserRows);
 
         Assert.Equal(38, library.Info.MainVersion);
-        Assert.Equal(3, library.Info.UserVersion);
+        Assert.Equal(4, library.Info.UserVersion);
         Assert.Equal(library.Info.MainDuuid, library.Info.UserMainDuuid);
         Assert.True(library.Info.HistoryEnabled);
     }
@@ -44,21 +44,21 @@ public class CcReaderTests
         Assert.Equal("Der Herr der Ringe", gefaehrten.Zyklus);
         Assert.Equal(1, gefaehrten.ZyklusNumber);
         Assert.Equal(2001, gefaehrten.Year);
-        Assert.Equal("[\"UNSPECIFIED\"]", gefaehrten.History.ToJson());
+        Assert.Equal("""[{"d":"UNSPECIFIED","c":""}]""", gefaehrten.History.ToJson());
         Assert.True(gefaehrten.Tags.Contains(CcTagList.WatchLater));
         Assert.Equal("120", gefaehrten.OnlineRefs.Tmdb("movie"));
 
         var basterds = Movie(library, "Inglourious Basterds");
         Assert.Equal(["Tarantino"], basterds.Groups);
         Assert.Equal(5, basterds.Score.Stored);
-        Assert.Equal("[\"UNSPECIFIED\",\"2016-11-01\",\"2016-11-18 22:50:38\"]", basterds.History.ToJson());
+        Assert.Equal("""[{"d":"UNSPECIFIED","c":""},{"d":"2016-11-01","c":""},{"d":"2016-11-18 22:50:38","c":""}]""", basterds.History.ToJson());
         Assert.Equal(["Kino"], library.AncestorsOf("Tarantino"));
 
         var gump = Movie(library, "Forrest Gump");
         Assert.Equal("13", gump.OnlineRefs.Tmdb("movie"));
         Assert.Equal("tt0109830", gump.OnlineRefs.Imdb());
 
-        Assert.Equal("[\"2023-11-05 11:00:00\"]", Movie(library, "Super 8").History.ToJson());
+        Assert.Equal("""[{"d":"2023-11-05 11:00:00","c":""}]""", Movie(library, "Super 8").History.ToJson());
     }
 
     [Fact]
@@ -96,7 +96,7 @@ public class CcReaderTests
         Assert.True(episodes[0].Tags.Contains(CcTagList.WatchLater));
         Assert.False(episodes[0].History.IsViewed);
         Assert.Equal(5, episodes[1].Score.Stored);
-        Assert.Equal("[\"2016-06-12\",\"2016-07-09 20:15:00\"]", episodes[1].History.ToJson());
+        Assert.Equal("""[{"d":"2016-06-12","c":""},{"d":"2016-07-09 20:15:00","c":""}]""", episodes[1].History.ToJson());
 
         Assert.Same(steinsGate, library.SeriesOf(episodes[1]));
         Assert.Same(library.Find(episodes[1].Id.ToUpperInvariant()), episodes[1]);
@@ -134,7 +134,8 @@ public class CcReaderTests
 
     [Theory]
     [InlineData(CcFiles.MainDbName, "VERSION_DB", "39", "schema version 39")]
-    [InlineData(CcFiles.UserDbName, "VERSION_DB", "4", "schema version 4")]
+    [InlineData(CcFiles.UserDbName, "VERSION_DB", "3", "schema version 3")]
+    [InlineData(CcFiles.UserDbName, "VERSION_DB", "5", "schema version 5")]
     [InlineData(CcFiles.UserDbName, "VERSION_MAINDB", "40", "main schema 40")]
     public async Task RefusesUnsupportedVersions(string file, string key, string value, string expected)
     {

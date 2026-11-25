@@ -33,9 +33,10 @@ before touching a component.
   delete lock files.
 - Never change `journal_mode`, never drop or edit the `JCCTRIGGER_*` triggers, set
   `PRAGMA recursive_triggers = true` on the write connection.
-- Viewed history entries are written as `yyyy-MM-dd HH:mm:ss` local time; existing entries stay
-  byte-identical; a list that does not parse completely is never rewritten (one bad entry makes
-  jClipCorn drop the whole list).
+- Viewed history entries are written as `{"d":"yyyy-MM-dd HH:mm:ss","c":"<HistoryComment>"}`
+  (local time, strings escaped like org.json); existing elements stay byte-identical, whether
+  plain string or object; a list that does not parse completely is never rewritten (one bad
+  entry makes jClipCorn refuse to load the database).
 - User rows are sparse: upsert with `ON CONFLICT(ID) DO UPDATE`, never `INSERT OR REPLACE`;
   delete a row that returns to all defaults.
 - Sync reads go through a local snapshot copy (`immutable=1`); the writer is the only code that
@@ -67,7 +68,8 @@ before touching a component.
 - Tests: xunit.v3 on Microsoft.Testing.Platform (`global.json`, `dotnet test --solution`). The
   test project sets `DisableTransitiveFrameworkReferences` so it runs without the ASP.NET Core
   runtime; tests must not touch Jellyfin types that need it.
-- Fixture DBs (`Tests/Fixtures/v38`) come from jClipCorn itself; tests copy them to a temp dir
+- Fixture DBs (`Tests/Fixtures/v38`, main v38 / user data v4) come from jClipCorn itself, the
+  user data brought to v4 as its README describes; tests copy them to a temp dir
   (`FixtureDirectory`) and never open the checked-in files. The generator and the jClipCorn
   re-open check are kept as `.java.txt` in `Tests/Fixtures/generator/`.
 - `make release VERSION=x.y.z.w`, then commit the zip together with `manifest.json`.

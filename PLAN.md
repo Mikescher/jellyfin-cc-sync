@@ -93,8 +93,8 @@ jellyfin-cc-sync/
 │   │   ├── CcWriter.cs                   pending updates → ClipCornUserData.db
 │   │   ├── CcBackups.cs                  rotating user-data backups
 │   │   └── Model/                        CcLibrary, CcElements (movie/series/season/episode records),
-│   │                                     CcDateTime, CcViewedHistory, CcOnlineRefs, CcScore, CcTagList,
-│   │                                     CcGroupList
+│   │                                     CcDateTime, CcViewedEntry, CcViewedHistory, CcJson, CcOnlineRefs,
+│   │                                     CcScore, CcTagList, CcGroupList
 │   ├── Jellyfin/
 │   │   ├── JfIndex.cs                    library query → JfItemInfo records
 │   │   └── JfApplier.cs                  user data + tag writes on GetItemById instances
@@ -195,6 +195,7 @@ Singletons: `StateDb`, `PendingStore`, `HistoryStore`, `RunStore`, `SessionTrack
 | | `StartCoalesceMinutes` | `10` | Pauses/seeks shorter than this keep the original start time |
 | | `ManualMarkCreatesPending` | off | "Mark played" in Jellyfin also creates a pending update |
 | | `ResetWatchLaterOnWatch` | on | Remove jClipCorn tag 3 (movie; episode + series) on write |
+| | `HistoryComment` | `Jellyfin` | Comment (`c`) of the viewed-history entries the plugin writes; may be empty |
 | Sync | `SyncEnabled` | on | CC → JF runs do anything at all |
 | | `SyncPlayed` / `SyncPlayCount` / `SyncLastPlayed` | on | Fields owned by the sync |
 | | `SyncFavorites` | on | Score → `IsFavorite` |
@@ -308,11 +309,12 @@ are safe to call concurrently (gate) and return quickly when there is nothing to
 
 Unit tests (xUnit, no server):
 
-- `CcDateTime` / `CcViewedHistory`: every encoding variant, jClipCorn's sort order, `add()`
-  equality (date-only vs datetime same day, identical datetimes, multiple `UNSPECIFIED`),
-  compact serialisation, byte-identical round trip of existing lists, rejection of unparseable
-  lists. Take expectations from `../jClipCorn/src/main/de/jClipCorn/util/datetime/` and
-  `columnTypes/CCDateTimeList.java`.
+- `CcDateTime` / `CcViewedHistory`: every encoding variant, object and plain-string elements
+  (mixed, missing comment), jClipCorn's sort order, `add()` equality (date-only vs datetime same
+  day, identical datetimes, multiple `UNSPECIFIED`, comments ignored), compact serialisation,
+  org.json escaping of comments, byte-identical round trip of existing lists, rejection of
+  unparseable lists. Take expectations from `../jClipCorn/src/main/de/jClipCorn/util/datetime/`
+  and `columnTypes/CCDateTimeList.java`, `CCViewedEntry.java`.
 - Time zone conversion incl. DST gap/overlap; date-only time of day.
 - `CcLockProbe`: JSON fresh/stale, bare PID, malformed, missing file, unreadable file.
 - `TagSlug`, rating labels, collision detection.
@@ -322,10 +324,11 @@ Unit tests (xUnit, no server):
 
 Fixture databases:
 
-- Generate a v38/v3 pair with jClipCorn itself: a throwaway test in `../jClipCorn` based on
-  `ClipCornBaseTest.createExampleDB()` (`src/test/de/jClipCorn/test/ClipCornBaseTest.java`,
-  data from `testres/example_data_full.jxmlbkp`) with history enabled, written to a folder and
-  copied into `Jellyfin.Plugin.CcSync.Tests/Fixtures/`. This gives real DDL and real
+- Generate a main v38 / user-data v4 pair with jClipCorn itself: a throwaway test in
+  `../jClipCorn` based on `ClipCornBaseTest.createExampleDB()`
+  (`src/test/de/jClipCorn/test/ClipCornBaseTest.java`, data from
+  `testres/example_data_full.jxmlbkp`) with history enabled, written to a folder and copied into
+  `Jellyfin.Plugin.CcSync.Tests/Fixtures/` (see its README for how the user data reached v4). This gives real DDL and real
   `JCCTRIGGER_AUTOHISTORY_*` triggers.
 - Reader tests against it; writer tests on a temp copy: apply pending updates, re-read, assert
   the exact `VIEWED_HISTORY`/`TAGS` text, sparse-row handling, and that the trigger wrote
@@ -333,7 +336,8 @@ Fixture databases:
 - Final check: open a written fixture copy in jClipCorn (`--validate-db` or GUI) and confirm it
   loads with the new entries. Done in phase 6 with a throwaway JUnit test
   (`Fixtures/generator/JellyfinCcSyncReopen.java.txt`): loads, entries present, validator output
-  unchanged.
+  unchanged. **Still open** for user-data v4: the check has not been run against a jClipCorn
+  that writes the object form with comments.
 
 Manual end-to-end (Jellyfin 12.3 in Docker, a copy of the real `ClipCornDB` folder, a small
 library with jClipCorn NFOs): first run hits the guard → preview → apply; watch an episode →

@@ -17,12 +17,12 @@ public class TmpJellyfinCcSyncReopen extends ClipCornBaseTest {
 
 		var super8 = movieByTitle(ml, "Super 8");
 		System.out.println("Super 8: " + super8.ViewedHistory.get().asJSONArray() + " tags " + super8.Tags.get().asJSONArray());
-		assertEquals("[\"2023-11-05 11:00:00\",\"2026-10-26 23:13:06\"]", super8.ViewedHistory.get().asJSONArray());
+		assertEquals("[{\"d\":\"2023-11-05 11:00:00\",\"c\":\"\"},{\"d\":\"2026-10-26 23:13:06\",\"c\":\"Jellyfin\"}]", super8.ViewedHistory.get().asJSONArray());
 
 		var series = seriesByTitle(ml, "Steins;Gate");
 		var ep1 = series.getSeasonByArrayIndex(0).getEpisodeByArrayIndex(0);
 		System.out.println("Ep1: " + ep1.ViewedHistory.get().asJSONArray() + " tags " + ep1.Tags.get().asJSONArray() + ", series tags " + series.Tags.get().asJSONArray());
-		assertEquals("[\"2026-10-26 23:13:22\"]", ep1.ViewedHistory.get().asJSONArray());
+		assertEquals("[{\"d\":\"2026-10-26 23:13:22\",\"c\":\"Jellyfin\"}]", ep1.ViewedHistory.get().asJSONArray());
 		assertFalse(ep1.Tags.get(CCSingleTag.TAG_WATCH_LATER));
 		assertFalse(series.Tags.get(CCSingleTag.TAG_WATCH_LATER));
 		assertTrue(ep1.isViewed());

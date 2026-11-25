@@ -43,6 +43,9 @@ public class PluginConfiguration : BasePluginConfiguration
     /// <summary>Gets or sets a value indicating whether writing a watch removes jClipCorn's "Watch later" tag.</summary>
     public bool ResetWatchLaterOnWatch { get; set; } = true;
 
+    /// <summary>Gets or sets the comment of the viewed-history entries the plugin writes; may be empty.</summary>
+    public string HistoryComment { get; set; } = "Jellyfin";
+
     public bool SyncEnabled { get; set; } = true;
 
     public bool SyncPlayed { get; set; } = true;

@@ -56,7 +56,7 @@ For each matched movie/episode:
    its JF state untouched (jClipCorn itself refuses to load such a database since `16777b66`).
 2. Overlay: every pending update for this element with status `pending` is added to `H` with
    jClipCorn's `add()` semantics (an entry equal to an existing one is skipped, exactly as the
-   writer will skip it later).
+   writer will skip it later). Comments play no part in this direction.
 3. Desired Jellyfin values:
 
 | Field | Value |
@@ -150,8 +150,10 @@ Created for every detected watch, before any attempt to write:
 | `Source` | `playback`, `playback-fallback`, `manual` |
 | `Status` | `pending` → `written` / `duplicate` / `failed`; `discarded` by hand |
 
-The CC entry is rendered at write time as `WatchedAtUtc` in `ClipCornTimeZone`,
-`yyyy-MM-dd HH:mm:ss`.
+The CC entry is rendered at write time: `d` = `WatchedAtUtc` in `ClipCornTimeZone`,
+`yyyy-MM-dd HH:mm:ss`; `c` = the setting `HistoryComment` (default `Jellyfin`, may be empty).
+The written element, e.g. `{"d":"2026-10-26 21:15:00","c":"Jellyfin"}`, is stored on the pending
+update and shown on the Pending and History pages.
 
 ### Writing
 

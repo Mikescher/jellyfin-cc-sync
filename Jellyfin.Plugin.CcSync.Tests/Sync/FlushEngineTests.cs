@@ -78,21 +78,35 @@ public sealed class FlushEngineTests : IDisposable
 
         Assert.True(result.Outcome == RunOutcomes.Applied, result.Message);
         Assert.Equal(1, result.Written);
-        Assert.Equal("[\"2023-11-05 11:00:00\",\"2026-10-26 21:15:00\"]", History(Super8));
+        Assert.Equal("""[{"d":"2023-11-05 11:00:00","c":""},{"d":"2026-10-26 21:15:00","c":"Jellyfin"}]""", History(Super8));
 
         var done = _state.Pending.Get(update.Id)!;
         Assert.Equal(PendingStatus.Written, done.Status);
-        Assert.Equal("2026-10-26 21:15:00", done.CcEntry);
+        Assert.Equal("""{"d":"2026-10-26 21:15:00","c":"Jellyfin"}""", done.CcEntry);
 
         var run = _state.Runs.Last(RunKinds.Flush)!;
         Assert.Equal(RunOutcomes.Applied, run.Outcome);
         var entries = _state.History.Query(new HistoryQuery(RunId: run.Id)).Entries;
-        Assert.Contains(entries, e => e.Kind == HistoryKinds.PendingWritten && e.NewValue == "2026-10-26 21:15:00" && e.CcId == Super8);
+        Assert.Contains(entries, e => e.Kind == HistoryKinds.PendingWritten && e.NewValue == done.CcEntry && e.CcId == Super8);
         Assert.Contains(entries, e => e.Kind == HistoryKinds.RunFlush && e.Success);
 
         var backup = Assert.Single(CcBackups.List(BackupDirectory));
-        Assert.Contains("[\"2023-11-05 11:00:00\"]", Rows(backup), StringComparer.Ordinal);
+        Assert.Contains("""[{"d":"2023-11-05 11:00:00","c":""}]""", Rows(backup), StringComparer.Ordinal);
         Assert.Empty(Directory.EnumerateDirectories(Path.Combine(_fixture.SnapshotRoot, "data", "snapshots")));
+    }
+
+    [Theory]
+    [InlineData("", """{"d":"2026-10-26 21:15:00","c":""}""")]
+    [InlineData("Kino", """{"d":"2026-10-26 21:15:00","c":"Kino"}""")]
+    public async Task WritesTheConfiguredComment(string comment, string expected)
+    {
+        _config.HistoryComment = comment;
+        var update = AddMovie(Super8);
+
+        await _engine.RunAsync(_config, CancellationToken.None);
+
+        Assert.Equal("""[{"d":"2023-11-05 11:00:00","c":""},""" + expected + "]", History(Super8));
+        Assert.Equal(expected, _state.Pending.Get(update.Id)!.CcEntry);
     }
 
     [Fact]
@@ -104,7 +118,7 @@ public sealed class FlushEngineTests : IDisposable
         Assert.Equal(RunOutcomes.Waiting, (await _engine.RunAsync(_config, CancellationToken.None)).Outcome);
         Assert.Equal(RunOutcomes.Waiting, (await _engine.RunAsync(_config, CancellationToken.None)).Outcome);
 
-        Assert.Equal("[\"2023-11-05 11:00:00\"]", History(Super8));
+        Assert.Equal("""[{"d":"2023-11-05 11:00:00","c":""}]""", History(Super8));
         Assert.Equal(0, _state.Pending.Get(update.Id)!.Attempts);
         Assert.Empty(_state.Runs.Recent(null, 10));
         var locked = Assert.Single(_state.History.Query(new HistoryQuery(Kind: HistoryKinds.CcLocked)).Entries);
@@ -148,7 +162,7 @@ public sealed class FlushEngineTests : IDisposable
         await _engine.RunAsync(_config, CancellationToken.None);
 
         Assert.Equal(PendingStatus.Written, _state.Pending.Get(update.Id)!.Status);
-        Assert.Equal("[\"2026-10-26 21:15:00\"]", _fixture.Scalar(CcFiles.UserDbName, $"SELECT VIEWED_HISTORY FROM EPISODES WHERE ID = '{SteinsGateEp1}'"));
+        Assert.Equal("""[{"d":"2026-10-26 21:15:00","c":"Jellyfin"}]""", _fixture.Scalar(CcFiles.UserDbName, $"SELECT VIEWED_HISTORY FROM EPISODES WHERE ID = '{SteinsGateEp1}'"));
         Assert.Equal("[]", _fixture.Scalar(CcFiles.UserDbName, $"SELECT TAGS FROM SERIES WHERE ID = '{SteinsGate}'"));
         var written = Assert.Single(_state.History.Query(new HistoryQuery(Kind: HistoryKinds.PendingWritten)).Entries);
         Assert.Contains("removed from the series", written.Detail, StringComparison.Ordinal);

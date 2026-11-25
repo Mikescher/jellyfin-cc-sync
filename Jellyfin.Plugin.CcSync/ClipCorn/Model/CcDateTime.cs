@@ -10,7 +10,7 @@ public enum CcDateTimeKind
 }
 
 /// <summary>
-/// One viewed-history entry with jClipCorn's comparison semantics
+/// The date of one viewed-history entry, with jClipCorn's comparison semantics
 /// (<c>util/datetime/CCDateTime.java</c>). The comparison is not a total order: a date-only
 /// entry compares equal to every datetime on the same day.
 /// </summary>
@@ -36,7 +36,7 @@ public sealed class CcDateTime
     /// <summary>Gets the time to the second; meaningful only for <see cref="CcDateTimeKind.DateTime"/>.</summary>
     public TimeOnly Time { get; }
 
-    /// <summary>Gets the entry exactly as stored, kept so rewritten lists leave it byte-identical.</summary>
+    /// <summary>Gets the date text exactly as stored (<c>d</c> of the element).</summary>
     public string Raw { get; }
 
     public bool IsUnspecified => Kind == CcDateTimeKind.Unspecified;

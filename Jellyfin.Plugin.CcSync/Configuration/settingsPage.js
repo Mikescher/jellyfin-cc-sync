@@ -60,6 +60,7 @@ export default function (view) {
             field('DateOnlyTimeOfDay').value = config.DateOnlyTimeOfDay || '12:00';
             field('LockStaleMinutes').value = config.LockStaleMinutes;
             field('BackupCount').value = config.BackupCount;
+            field('HistoryComment').value = config.HistoryComment || '';
 
             renderUsers(field('SyncUserId'), users, config.SyncUserId);
             renderLibraries(view.querySelector('#ccSyncLibraries'), libraries || [], config.LibraryIds);
@@ -86,6 +87,7 @@ export default function (view) {
             config.DateOnlyTimeOfDay = field('DateOnlyTimeOfDay').value || '12:00';
             config.LockStaleMinutes = numberOr(field('LockStaleMinutes'), 180);
             config.BackupCount = numberOr(field('BackupCount'), 20);
+            config.HistoryComment = field('HistoryComment').value.trim();
 
             config.SyncUserId = field('SyncUserId').value;
             config.LibraryIds = Array.from(view.querySelectorAll('.ccSyncLibrary'))

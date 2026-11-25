@@ -185,7 +185,7 @@ public sealed class FlushEngine : IDisposable
 
         foreach (var update in pending)
         {
-            var resolved = Resolve(update, library, lookup, zone, out var problem);
+            var resolved = Resolve(update, library, lookup, zone, config.HistoryComment ?? string.Empty, out var problem);
             if (resolved is null)
             {
                 Fail(update, problem!, runId, log, summary);
@@ -263,7 +263,7 @@ public sealed class FlushEngine : IDisposable
         return Done(summary);
     }
 
-    private CcWriteRequest? Resolve(PendingUpdate update, CcLibrary library, CcLookup lookup, TimeZoneInfo zone, out string? problem)
+    private CcWriteRequest? Resolve(PendingUpdate update, CcLibrary library, CcLookup lookup, TimeZoneInfo zone, string comment, out string? problem)
     {
         problem = null;
         var kind = update.ItemKind switch
@@ -312,9 +312,9 @@ public sealed class FlushEngine : IDisposable
                 problem = $"clipcorn id {id} is a {element.Kind} in jClipCorn, not a {kind}";
                 return null;
             case CcEpisode episode:
-                return new CcWriteRequest(update.Id, episode.Id, CcKind.Episode, CcDateTime.FromUtc(update.WatchedAtUtc, zone), library.SeriesOf(episode)?.Id);
+                return new CcWriteRequest(update.Id, episode.Id, CcKind.Episode, CcViewedEntry.Create(CcDateTime.FromUtc(update.WatchedAtUtc, zone), comment), library.SeriesOf(episode)?.Id);
             case var element:
-                return new CcWriteRequest(update.Id, element.Id, CcKind.Movie, CcDateTime.FromUtc(update.WatchedAtUtc, zone), null);
+                return new CcWriteRequest(update.Id, element.Id, CcKind.Movie, CcViewedEntry.Create(CcDateTime.FromUtc(update.WatchedAtUtc, zone), comment), null);
         }
     }
 

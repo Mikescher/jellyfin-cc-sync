@@ -1,7 +1,7 @@
 # jClipCorn database reference
 
 Everything the plugin needs to know about the jClipCorn database, verified against the
-jClipCorn source in `../jClipCorn` (main DB v38, user-data DB v3). Source paths below are
+jClipCorn source in `../jClipCorn` (main DB v38, user-data DB v4). Source paths below are
 relative to `../jClipCorn/src/main/de/jClipCorn/`.
 
 ## Files
@@ -32,7 +32,7 @@ All files live in one folder, `<jcc working dir>/ClipCornDB/`:
 | Key | Supported value |
 |---|---|
 | `main.INFO.VERSION_DB` | `38` |
-| `userdata.INFO.VERSION_DB` | `3` |
+| `userdata.INFO.VERSION_DB` | `4` (object-form viewed history, see below) |
 | `userdata.INFO.VERSION_MAINDB` | must be `<=` main `VERSION_DB` |
 
 Any other value: reading and writing are refused with a clear status message. A new jClipCorn
@@ -135,35 +135,54 @@ There is no viewed flag: an element is viewed iff `VIEWED_HISTORY` is non-empty
 (`database/databaseElement/CCMovie.java:208-211`, `CCEpisode.java:351-354`). Only movies and
 episodes have a history; series/season state is derived in memory.
 
-Format: a compact JSON array of strings (no spaces), sorted (`columnTypes/CCDateTimeList.java`):
+Format: a compact JSON array (no spaces) of objects, sorted (`columnTypes/CCDateTimeList.java`,
+`columnTypes/CCViewedEntry.java`). Each object has the keys `d` (date) and `c` (free-text
+comment, `""` = none), always both and in that order:
 
-| Variant | Encoding | Meaning |
+```json
+[{"d":"UNSPECIFIED","c":""},{"d":"2016-11-27 16:48:30","c":"Kino"},{"d":"2018-10-21","c":""}]
+```
+
+`d` encodings:
+
+| Variant | `d` | Meaning |
 |---|---|---|
 | unknown date | `"UNSPECIFIED"` | a real viewing, date unknown; counts in `count()` |
 | date only | `"2018-10-21"` | viewed that day, time unknown |
 | date + time | `"2018-10-21 16:06:45"` | viewed at that local time |
 | read-only variant | `"2018-10-21 16:06:45.123"` | accepted on read; milliseconds dropped on save |
 
-Example: `["UNSPECIFIED","UNSPECIFIED","2016-11-27 16:48:30","2023-11-05 11:00:00"]`.
+Reading accepts per element either that object (a missing `c` reads as `""`) or a plain date
+string (`"2018-10-21"`, comment `""`), also mixed within one array; jClipCorn writes every
+element as an object on its next save of the element. The user-data migration 3 → 4 rewrote
+every row to the object form with `"c":""`, keeping order and the `d` strings.
+
+Strings are escaped like org.json's `JSONObject.quote` (jClipCorn serialises with
+`JSONStringer`): `\"`, `\\`, `/` as `\/` only directly after `<`, `\b \t \n \f \r`, any other
+char below U+0020, in U+0080–U+009F or in U+2000–U+20FF as `\u` + four lowercase hex digits;
+everything else, other non-ASCII included, literally (UTF-8 in the database).
 
 - Times are local wall-clock time of the jClipCorn machine, no zone stored
   (`util/datetime/CCDateTime.java`). The plugin converts with the configured `ClipCornTimeZone`.
 - Sort order: `UNSPECIFIED` first, then chronological; a date-only entry compares **equal** to
-  any datetime on the same day (`CCDateTime.java:150-160`).
-- `add()` skips an entry that compares equal to an existing one (`CCDateTimeList.java:90-96`):
+  any datetime on the same day (`CCDateTime.java`, `compareTo`). Only `d` counts; comments never
+  influence order or equality.
+- `add()` skips an entry whose `d` compares equal to an existing one (`CCDateTimeList.add`):
   an identical datetime, or any datetime on a day that already has a date-only entry (and vice
-  versa). Multiple `UNSPECIFIED` entries are allowed.
+  versa), whatever the comments. Multiple `UNSPECIFIED` entries are allowed.
 - **One unparseable entry makes the whole list unreadable for jClipCorn.** Since `16777b66`
   ("Properly fail to load on invalid database values") `fromJSONArray` of every JSON list
   column (history, tags, groups, online refs, …) throws `JSONListFormatException` and jClipCorn
   refuses to load the database; before that it read the list as empty and wrote `[]` on its
-  next save. The plugin's writer must produce only `yyyy-MM-dd HH:mm:ss` entries, keep existing
-  entries verbatim, and refuse to touch a row whose existing list it cannot parse completely.
+  next save. The plugin's writer must produce only `{"d":"yyyy-MM-dd HH:mm:ss","c":…}` entries,
+  keep existing elements verbatim (string or object form, as stored), and refuse to touch a row
+  whose existing list it cannot parse completely.
 - jClipCorn's entry parser (`CCDateTime.createFromSQL`) checks only the length and the
   separators, not digits or ranges (`2016-13-45` passes). The plugin's parser
   (`CcDateTime.TryParse`) is stricter: digits, real calendar dates, `00:00:00`–`23:59:59`, and
-  `UNSPECIFIED` in exactly that spelling. Anything it rejects counts as unparseable; jClipCorn
-  never writes such entries itself.
+  `UNSPECIFIED` in exactly that spelling. Its element parser (`CcViewedEntry.TryParse`) accepts
+  only a string or an object with a string `d`, an optional string `c` and no other or repeated
+  key. Anything it rejects counts as unparseable; jClipCorn never writes such entries itself.
 - `add()` re-sorts the whole list with Java's stable `Collections.sort`. For a list jClipCorn
   wrote (already sorted) that keeps every existing entry in place and puts the new one behind all
   entries that do not compare greater; the plugin reproduces this with a stable binary insertion
@@ -244,8 +263,9 @@ transaction, after `PRAGMA recursive_triggers = true`:
 
 1. `SELECT VIEWED_HISTORY, TAGS FROM MOVIES|EPISODES WHERE ID = ?`.
 2. Parse with jClipCorn semantics. Unparseable → fail this update, leave the row untouched.
-3. Add the entry (`yyyy-MM-dd HH:mm:ss`, local time) with jClipCorn's `add()` semantics. Skipped
-   as equal → the history stays as it is ("duplicate").
+3. Add the entry `{"d":"yyyy-MM-dd HH:mm:ss","c":"<HistoryComment>"}` (local time; the comment
+   from the plugin setting `HistoryComment`, default `Jellyfin`, may be empty) with jClipCorn's
+   `add()` semantics. Skipped as equal → the history stays as it is ("duplicate").
 4. If `ResetWatchLaterOnWatch`: remove `3` from TAGS of the element; for an episode also from
    its series' user row (`SERIES`, id via main `EPISODES.SEASONID → SEASONS.SERIESID`). This also
    happens for a duplicate, as `addToViewedHistoryFromUI` removes the tag without looking at the
@@ -259,8 +279,10 @@ transaction, after `PRAGMA recursive_triggers = true`:
 6. A series row whose values all returned to defaults after step 4 is deleted, as jClipCorn
    would.
 
-Serialisation: compact JSON (`["a","b"]`), sorted with jClipCorn's comparator, existing entries
-byte-for-byte unchanged.
+Serialisation: compact JSON (`[{"d":"…","c":"…"},…]`), sorted with jClipCorn's comparator on
+`d`, existing elements byte-for-byte unchanged (an old plain-string element stays a string, an
+object keeps its key order and escapes), the new element's strings escaped like org.json.
+The pending update and its history entries record the new element's JSON text as the CC entry.
 
 While the transaction runs, `ClipCornUserData.db-journal` is the writer's own; the lock probe
 right before `COMMIT` therefore ignores that one journal (locks and the other journals still
@@ -272,7 +294,8 @@ jClipCorn's validator (`presetDefault`) reports exactly the same errors before a
 write — provided jClipCorn's JVM runs in the configured `ClipCornTimeZone`. With a different
 zone, a fresh entry can lie in jClipCorn's future and `CCDateTimeList.isValid()` reports
 "Invalid history". The throwaway check is kept in
-`Jellyfin.Plugin.CcSync.Tests/Fixtures/generator/JellyfinCcSyncReopen.java.txt`.
+`Jellyfin.Plugin.CcSync.Tests/Fixtures/generator/JellyfinCcSyncReopen.java.txt`; it has not
+been run against a jClipCorn with user data v4 yet.
 
 ## Side effects the plugin does not reproduce
 

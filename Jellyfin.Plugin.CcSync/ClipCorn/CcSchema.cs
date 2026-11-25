@@ -13,7 +13,7 @@ public sealed class CcSchemaException(string message) : Exception(message);
 public static class CcSchema
 {
     public const int SupportedMainVersion = 38;
-    public const int SupportedUserVersion = 3;
+    public const int SupportedUserVersion = 4;
 
     public static CcDatabaseInfo ReadInfo(SqliteConnection main, SqliteConnection user)
     {

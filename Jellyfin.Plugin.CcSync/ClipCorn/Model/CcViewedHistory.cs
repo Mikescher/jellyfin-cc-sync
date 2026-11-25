@@ -5,18 +5,18 @@ namespace Jellyfin.Plugin.CcSync.ClipCorn.Model;
 
 /// <summary>
 /// A <c>VIEWED_HISTORY</c> list (<c>columnTypes/CCDateTimeList.java</c>). Kept in the stored
-/// order; <see cref="Add"/> re-sorts the way jClipCorn's constructor does.
+/// order; <see cref="Add"/> re-sorts the way jClipCorn's constructor does, by date only.
 /// </summary>
 public sealed class CcViewedHistory
 {
-    private CcViewedHistory(IReadOnlyList<CcDateTime> entries)
+    private CcViewedHistory(IReadOnlyList<CcViewedEntry> entries)
     {
         Entries = entries;
     }
 
     public static CcViewedHistory Empty { get; } = new([]);
 
-    public IReadOnlyList<CcDateTime> Entries { get; }
+    public IReadOnlyList<CcViewedEntry> Entries { get; }
 
     /// <summary>Gets the number of viewings; unspecified entries count.</summary>
     public int Count => Entries.Count;
@@ -24,8 +24,9 @@ public sealed class CcViewedHistory
     public bool IsViewed => Entries.Count > 0;
 
     /// <summary>
-    /// Parses a stored list. A single bad entry makes the whole list unreadable for jClipCorn, so a
-    /// list that fails here must never be rewritten.
+    /// Parses a stored list; elements may be in object or plain string form, mixed. A single bad
+    /// entry makes the whole list unreadable for jClipCorn, so a list that fails here must never be
+    /// rewritten.
     /// </summary>
     public static bool TryParse(string? json, out CcViewedHistory history, out string? error)
     {
@@ -46,47 +47,50 @@ public sealed class CcViewedHistory
                 return false;
             }
 
-            var entries = new List<CcDateTime>();
+            var entries = new List<CcViewedEntry>();
+            var position = 0;
             foreach (var element in doc.RootElement.EnumerateArray())
             {
-                if (element.ValueKind != JsonValueKind.String)
+                if (!CcViewedEntry.TryParse(element, out var entry, out error))
                 {
-                    error = $"entry {element.GetRawText()} is not a string";
                     return false;
                 }
 
-                var text = element.GetString()!;
-                if (!CcDateTime.TryParse(text, out var entry))
+                // GetRawText is decoded again from the UTF-8 copy JsonDocument parses; ToJson relies
+                // on it being the exact stored text.
+                position = json.IndexOf(entry.Json, position, StringComparison.Ordinal);
+                if (position < 0)
                 {
-                    error = $"entry \"{text}\" is not a jClipCorn date";
+                    error = $"entry {entry.Json} cannot be kept verbatim";
                     return false;
                 }
 
+                position += entry.Json.Length;
                 entries.Add(entry);
             }
 
             history = new CcViewedHistory(entries);
             return true;
         }
-        catch (JsonException ex)
+        catch (Exception ex) when (ex is JsonException or ArgumentException)
         {
             error = "invalid JSON: " + ex.Message;
             return false;
         }
     }
 
-    public static CcViewedHistory Create(IEnumerable<CcDateTime> entries) => new(StableSort(entries.ToList()));
+    public static CcViewedHistory Create(IEnumerable<CcViewedEntry> entries) => new(StableSort(entries.ToList()));
 
-    /// <summary>jClipCorn's <c>contains</c>: any entry <see cref="CcDateTime.IsEqual"/> to the value.</summary>
-    public bool Contains(CcDateTime value) => Entries.Any(e => e.IsEqual(value));
+    /// <summary>jClipCorn's <c>contains</c>: any entry whose date <see cref="CcDateTime.IsEqual"/> the value.</summary>
+    public bool Contains(CcDateTime value) => Entries.Any(e => e.Date.IsEqual(value));
 
     /// <summary>
-    /// jClipCorn's <c>add()</c>: an entry equal to an existing one is skipped, otherwise it is added
-    /// and the list sorted again.
+    /// jClipCorn's <c>add()</c>: an entry whose date equals an existing one is skipped, whatever the
+    /// comments; otherwise it is added and the list sorted again.
     /// </summary>
-    public CcViewedHistory Add(CcDateTime value, out bool added)
+    public CcViewedHistory Add(CcViewedEntry value, out bool added)
     {
-        added = !Contains(value);
+        added = !Contains(value.Date);
         if (!added)
         {
             return this;
@@ -105,7 +109,7 @@ public sealed class CcViewedHistory
         DateTime? latest = null;
         foreach (var entry in Entries)
         {
-            var instant = entry.ToUtc(zone, dateOnlyTimeOfDay);
+            var instant = entry.Date.ToUtc(zone, dateOnlyTimeOfDay);
             if (instant is not null && (latest is null || instant > latest))
             {
                 latest = instant;
@@ -116,7 +120,7 @@ public sealed class CcViewedHistory
     }
 
     /// <summary>
-    /// Serialises compactly like jClipCorn's <c>JSONArray.toString()</c>, every entry in its stored text.
+    /// Serialises compactly like jClipCorn's <c>JSONStringer</c>, every entry in its stored text.
     /// </summary>
     public string ToJson()
     {
@@ -128,8 +132,7 @@ public sealed class CcViewedHistory
                 builder.Append(',');
             }
 
-            // Parsed entries consist of digits, '-', ':', '.', ' ' or UNSPECIFIED: nothing to escape.
-            builder.Append('"').Append(Entries[i].Raw).Append('"');
+            builder.Append(Entries[i].Json);
         }
 
         return builder.Append(']').ToString();
@@ -138,11 +141,11 @@ public sealed class CcViewedHistory
     public override string ToString() => ToJson();
 
     /// <summary>
-    /// Stable binary insertion sort with jClipCorn's comparator. For a list jClipCorn wrote (already
-    /// sorted) it equals Java's TimSort: existing entries keep their order, a new one goes behind
-    /// every entry that does not compare greater.
+    /// Stable binary insertion sort with jClipCorn's comparator on the dates. For a list jClipCorn
+    /// wrote (already sorted) it equals Java's TimSort: existing entries keep their order, a new one
+    /// goes behind every entry that does not compare greater.
     /// </summary>
-    private static List<CcDateTime> StableSort(List<CcDateTime> list)
+    private static List<CcViewedEntry> StableSort(List<CcViewedEntry> list)
     {
         for (var i = 1; i < list.Count; i++)
         {
@@ -151,7 +154,7 @@ public sealed class CcViewedHistory
             while (left < right)
             {
                 var mid = (left + right) >>> 1;
-                if (CcDateTime.Compare(pivot, list[mid]) < 0)
+                if (CcDateTime.Compare(pivot.Date, list[mid].Date) < 0)
                 {
                     right = mid;
                 }

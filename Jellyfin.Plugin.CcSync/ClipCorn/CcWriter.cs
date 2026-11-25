@@ -5,7 +5,7 @@ using Microsoft.Data.Sqlite;
 namespace Jellyfin.Plugin.CcSync.ClipCorn;
 
 /// <summary>One viewing to add; <paramref name="SeriesId"/> only for episodes.</summary>
-public sealed record CcWriteRequest(long PendingId, string ElementId, CcKind Kind, CcDateTime Entry, string? SeriesId);
+public sealed record CcWriteRequest(long PendingId, string ElementId, CcKind Kind, CcViewedEntry Entry, string? SeriesId);
 
 public enum CcWriteResult
 {
@@ -125,7 +125,7 @@ public static class CcWriter
 
         if (!CcViewedHistory.TryParse(historyText, out var history, out var error))
         {
-            return new CcWriteOutcome(request.PendingId, CcWriteResult.Failed, request.Entry.Raw, false, false,
+            return new CcWriteOutcome(request.PendingId, CcWriteResult.Failed, request.Entry.Json, false, false,
                 $"the existing VIEWED_HISTORY {historyText} does not parse ({error}); jClipCorn reads it as broken, so it is left alone");
         }
 
@@ -173,7 +173,7 @@ public static class CcWriter
         return new CcWriteOutcome(
             request.PendingId,
             added ? CcWriteResult.Written : CcWriteResult.Duplicate,
-            request.Entry.Raw,
+            request.Entry.Json,
             watchLaterRemoved,
             seriesWatchLaterRemoved,
             notes.Count == 0 ? null : string.Join("; ", notes));
