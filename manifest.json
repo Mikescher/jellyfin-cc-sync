@@ -9,6 +9,14 @@
         "imageUrl": "https://raw.githubusercontent.com/Mikescher/jellyfin-cc-sync/master/assets/logo.png",
         "versions": [
             {
+                "version": "1.0.0.0",
+                "changelog": "Release 1.0.0.0\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01XtrzJP3NLotNyqKnhwfcA7",
+                "targetAbi": "12.3.0.0",
+                "sourceUrl": "https://raw.githubusercontent.com/Mikescher/jellyfin-cc-sync/master/releases/jellyfin-cc-sync_1.0.0.0.zip",
+                "checksum": "98c366fcaa9eb1398c1f6f17fe5c51ff",
+                "timestamp": "2026-11-25T12:52:03Z"
+            },
+            {
                 "version": "1.1.0.0",
                 "changelog": "Requires jClipCorn user data v4: viewed history entries are written as {d,c} objects with a configurable comment (HistoryComment, default: from jellyfin-cc-sync). Repeated watch signals within the dedup window are recorded as duplicates and never written. Accepts jClipCorn main schema 38 and 39.",
                 "targetAbi": "12.3.0.0",
@@ -23,14 +31,6 @@
                 "sourceUrl": "https://raw.githubusercontent.com/Mikescher/jellyfin-cc-sync/master/releases/jellyfin-cc-sync_1.0.1.0.zip",
                 "checksum": "e00084ca01ac4da8cd6201ee749524a8",
                 "timestamp": "2026-10-27T20:34:37Z"
-            },
-            {
-                "version": "1.0.0.0",
-                "changelog": "First release: jClipCorn \u2192 Jellyfin sync of watched state, favourites and jcc-* tags; Jellyfin watches written back into jClipCorn's viewed history; preview/apply guard, pending queue and full history.",
-                "targetAbi": "12.3.0.0",
-                "sourceUrl": "https://raw.githubusercontent.com/Mikescher/jellyfin-cc-sync/master/releases/jellyfin-cc-sync_1.0.0.0.zip",
-                "checksum": "69776cc86ec937baeacca155ab7d8ff7",
-                "timestamp": "2026-10-26T23:06:17Z"
             }
         ]
     }
